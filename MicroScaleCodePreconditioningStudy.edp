@@ -1,0 +1,819 @@
+load "Element_P3"
+load "UMFPACK64"
+load "gmsh"
+load "medit"
+
+include "variableExporter.edp"
+include "2D_Macros.edp"
+//include "MeshPlay.edp"
+
+//calcolo il normal. perche' c'e' un scaling (inizialmente dichiaro una geometria con L 80, poi lo riscalo), c'e' questo fattore di 4
+macro funcDeriv(tort,r,buffer,L) ( 0. + tort*r*pi*cos(4.*r*pi*x)*(x>.25*buffer && x < .25*(L - buffer)) ) //
+macro normalVector(tort,r,buffer,L) ( (1./sqrt(1.+funcDeriv(tort,r,buffer,L)*funcDeriv(tort,r,buffer,L)))*[1.,-funcDeriv(tort,r,buffer,L)] )//
+//calcolo pure il WSS
+macro computeWSSAxi(nu,uxh,uyh,tort,r,buffer,L)( (nu*stressTensor(uxh,uyh)*normalVector(tort,r,buffer,L) -nu*((stressTensor(uxh,uyh)*normalVector(tort,r,buffer,L))'*normalVector(tort,r,buffer,L))*normalVector(tort,r,buffer,L)  ) //
+
+//macro computeWSSAxi(nu,uxh,uyh,tort,r,buffer,L))( (nu*axiNormal*stressTensor(uxh,uyh)*[0,N.y] - nu*((axiNormal*stressTensor(uxh,uyh)*[0,N.y])'*[0,N.y]*axiNormal)*[0,N.y]*axiNormal ) ) //
+macro axiNormal() ((1./y) )//
+
+//macro che servono varie robe
+macro WSSMag(nu,uxh,uyh)(sqrt(computeWSSAxi(nu,uxh,uyh,tort,r,buffer,L))'*computeWSSAxi(nu,uxh,uyh,tort,r,buffer,L)))))///
+//macro WSSSigmoid4(threshhold,nu,uxh,uyh,tort,r,buffer,L)(( exp(- ( sqrt(computeWSSAxi(nu,uxh,uyh,tort,r,buffer,L)'*computeWSSAxi(nu,uxh,uyh,tort,r,buffer,L))-threshhold))) ))/(1.+exp(- ( sqrt(computeWSSAxi(nu,uxh,uyh,tort,r,buffer,L)'*computeWSSAxi(nu,uxh,uyh,tort,r,buffer,L))-threshhold))) )) )//
+macro WSSSigmoid2(threshhold,nu,uxh,uyh)( exp(-(y-2.))/(1.+exp(-(y-2.))) ) //
+macro WSSSigmoid5(threshhold,nu,uxh,uyh)( exp(-(sqrt([uxh,uyh]'*[uxh,uyh])-threshhold))/(1.+exp(-(sqrt([uxh,uyh]'*[uxh,uyh])-threshhold))) ) //
+//macro WSSSigmoid4(threshhold,nu,uxh,uyh,tort,r,buffer,L)( exp(-35.*(sqrt(computeWSSAxi(nu,uxh,uyh,tort,r,buffer,L))'*computeWSSAxi(nu,uxh,uyh,tort,r,buffer,L)))-threshhold))/(1.+exp(-35.*(sqrt(computeWSSAxi(nu,uxh,uyh,tort,r,buffer,L))'*computeWSSAxi(nu,uxh,uyh,tort,r,buffer,L)))-threshhold))) ) //
+//macro WSSSigmoid4(threshhold,nu,uxh,uyh,tort,r,buffer,L)( exp(-.0001*(sqrt(computeWSSAxi(nu,uxh,uyh,tort,r,buffer,L)'*computeWSSAxi(nu,uxh,uyh,tort,r,buffer,L))-threshhold))/(1.+ exp(-.0001*(sqrt(computeWSSAxi(nu,uxh,uyh,tort,r,buffer,L)'*computeWSSAxi(nu,uxh,uyh,tort,r,buffer,L))-threshhold)) )))) )  )//
+//macro WSSSigmoid4(threshhold,nu,uxh,uyh,tort,r,buffer,L)( exp(-1.*(sqrt(abs(computeWSSAxi(nu,uxh,uyh,tort,r,buffer,L)'*computeWSSAxi(nu,uxh,uyh,tort,r,buffer,L)))-threshhold))/(1.+ exp(-1.*(sqrt(abs(computeWSSAxi(nu,uxh,uyh,tort,r,buffer,L)'*computeWSSAxi(nu,uxh,uyh,tort,r,buffer,L)))-threshhold)) )))) )  )//
+//macro WSSSigmoid4(threshhold,nu,uxh,uyh,tort,r,buffer,L )  ( exp(-35.*(sqrt(computeWSSAxi(nu,uxh,uyh,tort,r,buffer,L))'*computeWSSAxi(nu,uxh,uyh,tort,r,buffer,L)))-threshhold))/(1.+exp(-35.*(sqrt(computeWSSAxi(nu,uxh,uyh,tort,r,buffer,L))'*computeWSSAxi(nu,uxh,uyh,tort,r,buffer,L)))-threshhold))) ) //
+macro WSSSigmoid4(threshhold,nu,uxh,uyh,tort,r,buffer,L )  ( exp(-2.5*(sqrt(abs(computeWSSAxi(nu,uxh,uyh,tort,r,buffer,L))'*computeWSSAxi(nu,uxh,uyh,tort,r,buffer,L))))-threshhold))/(1.+exp(-2.5*(sqrt(abs(computeWSSAxi(nu,uxh,uyh,tort,r,buffer,L))'*computeWSSAxi(nu,uxh,uyh,tort,r,buffer,L))))-threshhold))) ) //
+macro WSSSigmoid3(threshhold,nu,ph)( exp(-20.*(ph-threshhold))/(1.+exp(-20.*(ph-threshhold))) ) //
+//macro WSSQuickComp(nu,uxh,uyh,tort,r,buffer,L) (sqrt(computeWSSAxi(nu,uxh,uyh,tort,r,buffer,L)'*computeWSSAxi(nu,uxh,uyh,tort,r,buffer,L)))//
+macro WSSQuickComp(nu,uxh,uyh,tort,r,buffer,L) (sqrt(computeWSSAxi(nu,uxh,uyh,tort,r,buffer,L)'*computeWSSAxi(nu,uxh,uyh,tort,r,buffer,L)))))//
+//label il sangue e dialysate
+int[int] bloodLabels=[1,2,3,4]; 
+int[int] dialysateLabels=[5,6,7,8];
+int [int] membraneLabels=[9,10,11,12];
+//il fattore che viene usato per riscalare dal lunghezza 80 in lunghezza 20
+real shrinkFactor=.25;
+//output un file che ricorda varie risultati della simulazioen
+bool gridConvergenceStudy=true;
+string directory="./";
+string simulationName="Steady.txt";
+string meshAppend="Test.txt";
+//string meshAppend="GaussSeidelPreconditioners.txt";
+
+//la cartella per x il vtk
+string simResults="./SangitaResults/";
+string outputFile=directory+simulationName;
+
+//parametri fisici 
+real dt=1.; real nuBlood=3.; real nuDial=1.; real gradDiv=100.; real rhoBlood=1.0*1.; real rhoDial=1.00*1.;
+//real dialysateSoluteDiffusion=.012585; real bloodSoluteDiffusion=.012585;
+real dialysateSoluteDiffusion=.00181; real bloodSoluteDiffusion=.000929;
+
+real tolerance=1e-6; real transportTol=1e-6; 
+bool exportFlow=true;
+bool importFlow=false;
+
+//tipo di solutore, monolithic e' sempre quello piu' veloce
+string transportSolverType="monolithic";
+string transportPreconditioner="gauss-seidel";
+cout<<"Enter torturosity"<<endl;
+real tortuosity;
+
+
+//maxIterations is for N-S solve, numStepsMix is for the transport equations.
+int maxIterations=500; int numStepsMix=500; int subIterations=-1; 
+
+//geometric parameters
+real L=80.;
+real bloodWidth=2.;
+real dialysateWidth=1.;
+real membraneWidth=0.;//.72/2.;
+//risoluzione del mesh
+real n=8.; int waveResolution=4;
+//input di tortorsity
+cin >> tortuosity;
+//frequenza delle onde
+real rapidity=.5; real baseline=1.;
+//l'area di influssi e outflussi prima iniziano le onde
+real bufferZone=3.*4.;
+
+
+//func gBlood= (shrinkFactor*5.)*((8.*.75)*((shrinkFactor*bloodWidth)+y)*((shrinkFactor*bloodWidth)-y))/((shrinkFactor*bloodWidth)^2);;
+//func gDial= (shrinkFactor*10.)*((8.*.75)*(shrinkFactor*bloodWidth-y)*((shrinkFactor*bloodWidth+shrinkFactor*dialysateWidth)-y))/((shrinkFactor*dialysateWidth)^2);
+//func gBlood= (.67*.0166667)*((8.*.75)*((shrinkFactor*bloodWidth)+y)*((shrinkFactor*bloodWidth)-y))/((shrinkFactor*bloodWidth)^2);;
+//func gDial= (1.33*.016667)*((8.*.75)*(shrinkFactor*bloodWidth-y)*((shrinkFactor*bloodWidth+shrinkFactor*dialysateWidth)-y))/((shrinkFactor*dialysateWidth)^2);
+//func gBlood= (8.*(1.33)*1.667/(2.*pi))*((8.*.75)*((shrinkFactor*bloodWidth)+y)*((shrinkFactor*bloodWidth)-y))/((shrinkFactor*bloodWidth)^2);;
+//func gDial= (8.*2.*(1.33)*1.667/(2.*pi))*((8.*.75)*(shrinkFactor*bloodWidth-y)*((shrinkFactor*bloodWidth+shrinkFactor*dialysateWidth)-y))/((shrinkFactor*dialysateWidth)^2);
+func gBlood= (8.*(4./3.)*(5./3)/(2.*pi))*((8.*.75)*((shrinkFactor*dialysateWidth)+y)*((shrinkFactor*dialysateWidth)-y))/((shrinkFactor*dialysateWidth)^2);;
+func gDial= (4.*2.*(1.)*(5./3.)/(2.*pi))*((8.*.75)*(shrinkFactor*dialysateWidth-y)*((shrinkFactor*bloodWidth+shrinkFactor*dialysateWidth)-y))/((shrinkFactor*bloodWidth)^2);
+//func gBlood= (0.0166666666)*((8.*.75)*((bloodWidth)+y)*((bloodWidth)-y))/((bloodWidth)^2);;
+//func gDial= (0.0166666666*2.)*((8.*.75)*(bloodWidth-y)*((bloodWidth+dialysateWidth)-y))/((dialysateWidth)^2);
+
+
+real K=1.; real p=1.; real wssThresh;/*=4.*42.5;*/ real vMaxPar=1.; real kappa=0.01;
+//qui metti pure il valore di WSS/8 che serve come threshhold
+cout<<"Enter wss threshold"<<endl;
+cin >> wssThresh;
+//non so perche' dobbiamo multiplicare questo da due... per il sigmoid sembra che serve la meta' del valore "vero"
+wssThresh=4.*wssThresh;
+//declare meshes
+//func gBlood=     4.*(.75*y*(bloodHeight-y))/(2^2);
+//func gDial=     4.*(.75*((inlet+outerRad-outWidth)-x)*(inlet+outerRad-x))/(2^2);
+//func gDial=     4*(.75*y*(bloodHeight-y))/(2^2);
+//func gBlood=     4*(.75*((inlet+outerRad-outWidth)-x)*(inlet+outerRad-x))/(2^2);
+
+
+border one(t=0.,dialysateWidth){x=t;y=0.;label=1;}
+border two(t=0.,bufferZone){x=dialysateWidth;y=t;label=4;}
+border three(t=bufferZone,L-bufferZone){x=dialysateWidth+tortuosity*sin(rapidity*pi*t);y=t;label=4;}
+border four(t=L-bufferZone,L){x=dialysateWidth;y=t;label=4;}
+border five(t=dialysateWidth,0.){x=t;y=L;label=3;}
+border six(t=L,0.){x=0.;y=t;label=2;}
+mesh ThDialA =buildmesh (one(2*n)+two(waveResolution*bufferZone*n)+three(waveResolution*(L-2*bufferZone)*n)+four(waveResolution*bufferZone*n)+five(2*n)+six(L*n) );
+//ThDial=movemesh(ThDial,[y,x]);
+
+border seven(t=dialysateWidth,dialysateWidth+bloodWidth){x=t;y=0.;label=5;}
+border eight(t=0.,L){x=dialysateWidth+bloodWidth;y=t;label=8;}
+border nine(t=dialysateWidth+bloodWidth,dialysateWidth){x=t;y=L;label=7;}
+border ten(t=L,L-bufferZone){x=dialysateWidth;y=t;label=6;}
+
+border eleven(t=L-bufferZone,bufferZone){x=dialysateWidth+tortuosity*sin(rapidity*pi*t);y=t;label=6;}
+border twelve(t=bufferZone,0.){x=dialysateWidth;y=t;label=6;}
+mesh ThBlood =buildmesh (seven(2*n)+eight(L*n)+nine(2*n)+ten(waveResolution*bufferZone*n)+eleven((L-2*bufferZone)*waveResolution*n)+twelve(bufferZone*n*waveResolution) );
+mesh ThDial=movemesh(ThBlood,[shrinkFactor*y,shrinkFactor*x]);
+ThBlood=movemesh(ThDialA,[shrinkFactor*y,shrinkFactor*x]);
+savemesh(ThDial,"./DialMesh.mesh");
+savemesh(ThBlood,"./BloodMesh.mesh");
+
+plot(ThBlood,ThDial);
+//blood fe spaces
+fespace VhBlood(ThBlood,[P2,P2]);
+fespace QhBlood(ThBlood,P1);
+//dialysate fe spaces
+fespace VhDial(ThDial,[P2,P2]);
+fespace QhDial(ThDial, P1);
+fespace DialMesh(ThDial,P0);
+fespace BloodMesh(ThBlood,P0);
+
+DialMesh hDial;
+BloodMesh hBlood;
+hDial=hTriangle;
+hBlood=hTriangle;
+VhBlood [bxh, byh];
+VhBlood [bxLast, byLast];
+VhBlood [bxT, byT];
+QhBlood pbh, cbh, qbh,cbhLast, cbhLast2,cbhOld, WSSSig, WSSVal, pbT;
+VhBlood [vxbh, vybh];
+VhBlood [bxWSS, byWSS];
+
+
+VhDial [dxh, dyh];
+VhDial [dxLast, dyLast];
+QhDial pdh, cdh, qdh, cdhLast, cdhLast2,cdhOld;
+VhDial [vxdh, vydh];
+
+cbhLast=0.00;
+cdhLast=.000;
+
+if(exportFlow==true && importFlow==true)
+{
+	cout<<"Cannot both export and import flow! Exporting flow!"<<endl;
+	importFlow=false;
+}
+
+//variational forms for transport equations
+varf dialysateBEVarf(cdh,qdh)=
+//	int2d(ThDial)(cdh*qdh)
+	int2d(ThDial)(y*1.*dialysateSoluteDiffusion*(dx(cdh)*dx(qdh)+dy(cdh)*dy(qdh))  )
+	+int2d(ThDial)(y*([dxh,dyh]'*[dx(cdh),dy(cdh)])*qdh )
+//WSS Sigmoid
+	+int1d(ThBlood,4)(y*vMaxPar*(WSSQuickComp(nuBlood,bxh,byh,tortuosity, rapidity,bufferZone, L)/wssThresh)*WSSSigmoid4(wssThresh,nuBlood,bxh,byh,tortuosity, rapidity,bufferZone, L)*dt*K*(cdh*1.)*qdh)
+//	+int1d(ThBlood,4)(y*vMaxPar*WSSSigmoid4(wssThresh,nuBlood,bxh,byh,tortuosity, rapidity,bufferZone, L)*dt*K*(cdh*1.)*qdh)
+	+on(7,cdh=0.0)
+	;
+
+varf dialysateBERHS(cdh,qdh)=
+//WSS Sigmoid
+	-int1d(ThDial,6)(y*vMaxPar*(WSSQuickComp(nuBlood,bxh,byh,tortuosity, rapidity,bufferZone, L)/wssThresh)*WSSSigmoid4(wssThresh,nuBlood,bxh,byh,tortuosity, rapidity,bufferZone, L)*dt*K*(-1.*cbh*1.)*qdh)
+	;
+
+//blood forms: BE
+varf bloodBEVarf(cbh,qbh)=
+	int2d(ThBlood)( y*bloodSoluteDiffusion*(dx(cbh)*dx(qbh)+dy(cbh)*dy(qbh)) ) 
+	+int2d(ThBlood)(y*([bxh,byh]'*[dx(cbh),dy(cbh)])*qbh )
+//WSS Sigmoid
+	+int1d(ThBlood,4)(y*vMaxPar*(WSSQuickComp(nuBlood,bxh,byh,tortuosity, rapidity,bufferZone, L)/wssThresh)*WSSSigmoid4(wssThresh,nuBlood,bxh,byh,tortuosity, rapidity,bufferZone, L)*dt*K*(cbh*1.)*qbh)
+	+on(1,cbh=1.)
+	;
+
+varf bloodBERHS(cbh,qbh)=
+//WSS Sigmoid
+//	-int1d(ThBlood,4)(y*(cbhOld/(kappa+cbhOld))*vMaxPar*WSSQuickComp(nuBlood,bxh,byh)*WSSSigmoid4(wssThresh,nuBlood,bxh,byh)*dt*K*(-cdhOld*1.)*qbh)
+	-int1d(ThBlood,4)(y*vMaxPar*(WSSQuickComp(nuBlood,bxh,byh,tortuosity, rapidity,bufferZone, L)/wssThresh)*WSSSigmoid4(wssThresh,nuBlood,bxh,byh,tortuosity, rapidity,bufferZone, L)*dt*K*(-cdhOld*1.)*qbh)
+	;
+
+varf bloodBERHSMat(cdh,qbh)=
+//WSS Sigmoid
+	-int1d(ThBlood,4)(y*vMaxPar*(WSSQuickComp(nuBlood,bxh,byh,tortuosity, rapidity,bufferZone, L)/wssThresh)*WSSSigmoid4(wssThresh,nuBlood,bxh,byh,tortuosity, rapidity,bufferZone, L)*dt*K*(cdh*1.)*qbh)
+	;
+
+
+
+problem stokesBlood([bxh,byh,pbh],[vxbh,vybh,qbh])=
+	int2d(ThBlood)(y*(nuBlood)*termineDiffusiva(bxh,byh,vxbh,vybh) )
+	+int2d(ThBlood)(gradDiv*(y*(dx(bxh)+dy(byh))+byh)*(y*(dx(vxbh)+dy(vybh))+vybh))
+	+int2d(ThBlood)((1.)*y*terminePressure(bxh,byh,qbh) )
+	-int2d(ThBlood)((1.)*y*terminePressure(vxbh,vybh,pbh) )
+	+int2d(ThBlood)((1./y)*(nuBlood)*byh*vybh)
+	-int2d(ThBlood)((1.)*pbh*vybh)
+	+int2d(ThBlood)((1.)*qbh*byh)
+//	+int1d(ThBlood,4)(1000000000.*[bxh,byh]'*[vxbh,vybh])
+	+on(1,bxh=gBlood,byh=0.)
+	+on(4,bxh=0.,byh=0.)
+	+on(3,byh=0.)
+	;
+
+
+problem WSSBlood(WSSVal,qbh)=
+	int2d(ThBlood)(y*WSSVal*qbh)
+	+on(4,WSSVal=y*sqrt(computeWSSAxi(nuBlood,bxh,byh,tortuosity, rapidity,bufferZone, L))'*computeWSSAxi(nuBlood,bxh,byh,tortuosity, rapidity,bufferZone, L))))
+	;
+
+problem WSSBloodSig(WSSSig,qbh)=
+	int2d(ThBlood)(WSSSig*qbh)
+//	-int1d(ThBlood,4)(WSSSigmoid4(wssThresh,nuBlood,bxh,byh,tortuosity, rapidity,bufferZone, L)*qbh)
+//	+on(4,WSSSig=y*vMaxPar*(WSSQuickComp(nuBlood,bxh,byh,tortuosity, rapidity,bufferZone, L)/wssThresh)*WSSSigmoid4(wssThresh,nuBlood,bxh,byh,tortuosity, rapidity,bufferZone, L))
+	+on(4,WSSSig=WSSSigmoid4(wssThresh,nuBlood,bxh,byh,tortuosity, rapidity,bufferZone, L))
+//	+on(4,WSSSig=y*(vMaxPar/wssThresh)*(WSSQuickComp(nuBlood,bxh,byh,tortuosity, rapidity,bufferZone, L)))
+	;
+
+problem nsBlood([bxh,byh,pbh],[vxbh,vybh,qbh])=
+	int2d(ThBlood)(y*(nuBlood)*termineDiffusiva(bxh,byh,vxbh,vybh) )
+	+int2d(ThBlood)(gradDiv*(y*(dx(bxh)+dy(byh))+byh)*(y*(dx(vxbh)+dy(vybh))+vybh))
+	+int2d(ThBlood)(rhoBlood*y*formaTrilinare(bxLast,byLast,bxh,byh,vxbh,vybh) )
+	+int2d(ThBlood)(y*terminePressure(bxh,byh,qbh) )
+	-int2d(ThBlood)(y*terminePressure(vxbh,vybh,pbh) )
+	+int2d(ThBlood)((1./y)*nuBlood*byh*vybh)
+	-int2d(ThBlood)(pbh*vybh)
+	+int2d(ThBlood)(qbh*byh)
+//	+int1d(ThBlood,4)(1000000000.*[bxh,byh]'*[vxbh,vybh])
+	+on(1,bxh=gBlood,byh=0.)
+	+on(4,bxh=0.,byh=0.)
+	+on(3,byh=0.)
+
+	;
+
+problem nsBloodNewton([bxh,byh,pbh],[vxbh,vybh,qbh])=
+	int2d(ThBlood)(y*nuBlood*termineDiffusiva(bxh,byh,vxbh,vybh) )
+	+int2d(ThBlood)(gradDiv*(y*(dx(bxh)+dy(byh))+byh)*(y*(dx(vxbh)+dy(vybh))+vybh))
+	+int2d(ThBlood)(rhoBlood*y*formaTrilinare(bxLast,byLast,bxh,byh,vxbh,vybh) )
+	+int2d(ThBlood)(rhoBlood*y*formaTrilinare(bxh,byh,bxLast,byLast,vxbh,vybh) )
+	-int2d(ThBlood)(rhoBlood*y*formaTrilinare(bxLast,byLast,bxLast,byLast,vxbh,vybh) )
+	+int2d(ThBlood)(y*terminePressure(bxh,byh,qbh) )
+	-int2d(ThBlood)(y*terminePressure(vxbh,vybh,pbh) )
+	+int2d(ThBlood)((1./y)*nuBlood*byh*vybh)
+	-int2d(ThBlood)(pbh*vybh)
+	+int2d(ThBlood)(qbh*byh)
+//	+int1d(ThBlood,4)(1000000000.*[bxh,byh]'*[vxbh,vybh])
+	+on(1,bxh=gBlood,byh=0.)
+	+on(4,bxh=0.,byh=0.)
+	+on(3,byh=0.)
+
+	;
+
+problem nsBloodNonCyl([bxh,byh,pbh],[vxbh,vybh,qbh])=
+	int2d(ThBlood)(nuBlood*termineDiffusiva(bxh,byh,vxbh,vybh) )
+	+int2d(ThBlood)(gradDiv*gradDivStab(bxh,byh,vxbh,vybh))
+	+int2d(ThBlood)(formaTrilinare(bxLast,byLast,bxh,byh,vxbh,vybh) )
+	+int2d(ThBlood)(terminePressure(bxh,byh,qbh) )
+	-int2d(ThBlood)(terminePressure(vxbh,vybh,pbh) )
+	+on(1,bxh=gBlood,byh=0.)
+	+on(4,bxh=0.,byh=0.);
+
+
+problem nsBloodNewtonNonCyl([bxh,byh,pbh],[vxbh,vybh,qbh])=
+	int2d(ThBlood)(nuBlood*termineDiffusiva(bxh,byh,vxbh,vybh) )
+	+int2d(ThBlood)(gradDiv*gradDivStab(bxh,byh,vxbh,vybh))
+	+int2d(ThBlood)(formaTrilinare(bxLast,byLast,bxh,byh,vxbh,vybh) )
+	+int2d(ThBlood)(formaTrilinare(bxh,byh,bxLast,byLast,vxbh,vybh) )
+	-int2d(ThBlood)(formaTrilinare(bxLast,byLast,bxLast,byLast,vxbh,vybh) )
+	+int2d(ThBlood)(terminePressure(bxh,byh,qbh) )
+	-int2d(ThBlood)(terminePressure(vxbh,vybh,pbh) )
+	+on(1,bxh=gBlood,byh=0.)
+	+on(4,bxh=0.,byh=0.);
+
+problem stokesBloodNonCyl([bxh,byh,pbh],[vxbh,vybh,qbh])=
+	int2d(ThBlood)(nuBlood*termineDiffusiva(bxh,byh,vxbh,vybh) )
+	+int2d(ThBlood)(y*gradDiv*gradDivStab(bxh,byh,vxbh,vybh))
+	+int2d(ThBlood)(terminePressure(bxh,byh,qbh) )
+	-int2d(ThBlood)(terminePressure(vxbh,vybh,pbh) )
+	+on(1,bxh=gBlood,byh=0.)
+	+on(4,bxh=0.,byh=0.);
+
+
+
+
+varf pressurePrecond(pbh,qbh)=
+	int2d(ThBlood)(y*(1./(nuBlood+gradDiv))*pbh*qbh )
+//	+int2d(ThBlood)((1./y)*nuBlood*dy(pbh)*dy(qbh) )
+//	+on(3,pbh=0)
+	;
+
+varf diffusiveTermBlood([bxh,byh],[vxbh,vybh])=
+	int2d(ThBlood)(y*nuBlood*termineDiffusiva(bxh,byh,vxbh,vybh) )
+	+int2d(ThBlood)(y*gradDiv*gradDivStab(bxh,byh,vxbh,vybh))
+	+int2d(ThBlood)((1./y)*nuBlood*byh*vybh)
+	+on(1,bxh=gBlood,byh=0.)
+	+on(4,bxh=0.,byh=0.);
+
+varf pressureTermBlood([bxh,byh],[qbh])=
+	int2d(ThBlood)(y*terminePressure(bxh,byh,qbh) )
+	+int2d(ThBlood)(qbh*byh);
+
+	
+
+problem stokesDial([dxh,dyh,pdh],[vxdh,vydh,qdh])=
+	int2d(ThDial)(y*(nuDial)*termineDiffusiva(dxh,dyh,vxdh,vydh) )
+	+int2d(ThDial)(gradDiv*(y*(dx(dxh)+dy(dyh))+dyh)*(y*(dx(vxdh)+dy(vydh))+vydh))
+	//+int2d(ThDial)(gradDiv*gradDivStab(dxh,dyh,vxdh,vydh))
+	+int2d(ThDial)(y*terminePressure(dxh,dyh,qdh) )
+	-int2d(ThDial)((1.)*y*terminePressure(vxdh,vydh,pdh) )
+	+int2d(ThDial)((1./y)*(nuDial)*dyh*vydh)
+	-int2d(ThDial)((1.)*pdh*vydh)
+	+int2d(ThDial)(qdh*dyh)
+	+on(7,dxh=gDial,dyh=0.)
+	+on(6,8,dxh=0.,dyh=0.);
+
+
+problem stokesDialNonCyl([dxh,dyh,pdh],[vxdh,vydh,qdh])=
+	int2d(ThDial)(nuDial*termineDiffusiva(dxh,dyh,vxdh,vydh) )
+	+int2d(ThDial)(gradDiv*gradDivStab(dxh,dyh,vxdh,vydh))
+	+int2d(ThDial)(terminePressure(dxh,dyh,qdh) )
+	-int2d(ThDial)(terminePressure(vxdh,vydh,pdh) )
+
+	+on(7,dxh=gDial,dyh=0.)
+	+on(6,8,dxh=0.,dyh=0.);
+
+problem nsDial([dxh,dyh,pdh],[vxdh,vydh,qdh])=
+	int2d(ThDial)(y*nuDial*termineDiffusiva(dxh,dyh,vxdh,vydh) )
+	+int2d(ThDial)(gradDiv*(y*(dx(dxh)+dy(dyh))+dyh)*(y*(dx(vxdh)+dy(vydh))+vydh))
+	//+int2d(ThDial)(y*gradDiv*gradDivStab(dxh,dyh,vxdh,vydh))
+	+int2d(ThDial)(rhoDial*y*formaTrilinare(dxLast,dyLast,dxh,dyh,vxdh,vydh) )
+	+int2d(ThDial)(y*terminePressure(dxh,dyh,qdh) )
+	-int2d(ThDial)(y*terminePressure(vxdh,vydh,pdh) )
+	+int2d(ThDial)((1./y)*nuDial*dyh*vydh)
+	-int2d(ThDial)(pdh*vydh)
+	+int2d(ThDial)(qdh*dyh)
+	+on(7,dxh=gDial,dyh=0.)
+	+on(6,8,dxh=0.,dyh=0.);
+
+
+problem nsDialNonCyl([dxh,dyh,pdh],[vxdh,vydh,qdh])=
+	int2d(ThDial)(nuDial*termineDiffusiva(dxh,dyh,vxdh,vydh) )
+	+int2d(ThDial)(y*gradDiv*gradDivStab(dxh,dyh,vxdh,vydh))
+	+int2d(ThDial)(formaTrilinare(dxLast,dyLast,dxh,dyh,vxdh,vydh) )
+	+int2d(ThDial)(terminePressure(dxh,dyh,qdh) )
+	-int2d(ThDial)(terminePressure(vxdh,vydh,pdh) )
+	+on(7,dxh=gDial,dyh=0.)
+	+on(6,8,dxh=0.,dyh=0.);
+
+problem nsDialNewton([dxh,dyh,pdh],[vxdh,vydh,qdh])=
+	int2d(ThDial)(y*nuDial*termineDiffusiva(dxh,dyh,vxdh,vydh) )
+	+int2d(ThDial)(gradDiv*(y*(dx(dxh)+dy(dyh))+dyh)*(y*(dx(vxdh)+dy(vydh))+vydh))
+	//+int2d(ThDial)(y*gradDiv*gradDivStab(dxh,dyh,vxdh,vydh))
+	+int2d(ThDial)(rhoDial*y*formaTrilinare(dxLast,dyLast,dxh,dyh,vxdh,vydh) )
+	+int2d(ThDial)(rhoDial*y*formaTrilinare(dxh,dyh,dxLast,dyLast,vxdh,vydh) )
+	-int2d(ThDial)(rhoDial*y*formaTrilinare(dxLast,dyLast,dxLast,dyLast,vxdh,vydh) )
+	+int2d(ThDial)(y*terminePressure(dxh,dyh,qdh) )
+	-int2d(ThDial)(y*terminePressure(vxdh,vydh,pdh) )
+	+int2d(ThDial)((1./y)*nuDial*dyh*vydh)
+	-int2d(ThDial)(pdh*vydh)
+	+int2d(ThDial)(qdh*dyh)
+	+on(7,dxh=gDial,dyh=0.)
+	+on(6,8,dxh=0.,dyh=0.);
+
+problem nsDialNewtonNonCyl([dxh,dyh,pdh],[vxdh,vydh,qdh])=
+	int2d(ThDial)(nuDial*termineDiffusiva(dxh,dyh,vxdh,vydh) )
+	+int2d(ThDial)(gradDiv*gradDivStab(dxh,dyh,vxdh,vydh))
+	+int2d(ThDial)(formaTrilinare(dxLast,dyLast,dxh,dyh,vxdh,vydh) )
+	+int2d(ThDial)(formaTrilinare(dxh,dyh,dxLast,dyLast,vxdh,vydh) )
+	-int2d(ThDial)(formaTrilinare(dxLast,dyLast,dxLast,dyLast,vxdh,vydh) )
+	+int2d(ThDial)(terminePressure(dxh,dyh,qdh) )
+	-int2d(ThDial)(terminePressure(vxdh,vydh,pdh) )
+	+on(7,dxh=gDial,dyh=0.)
+	+on(6,8,dxh=0.,dyh=0.);
+
+string bloodComputed="./computedBlood.txt";
+string dialComputed="./computedDial.txt";
+string bloodPressureComputed="./computedBloodPressure.txt";
+string dialPressureComputed="./computedDialPressure.txt";
+string bloodTransportComputed="./computedBloodTransport.txt";
+string dialTransportComputed="./computedDialTransport.txt";
+
+if(importFlow==true)
+{
+	cout<<"Reading flow solutions..."<<endl;
+	ifstream readBlood(bloodComputed);
+	readBlood >> bxh[];
+	ifstream readDial(dialComputed);
+	readDial >> dxh[];
+	//ifstream readBloodPressure(bloodPressureComputed);
+	//readBloodPressure >> pbh[];
+	//ifstream readDialPressure(dialPressureComputed);
+	//readDialPressure >> pdh[];
+}
+else{
+	cout<<"Computing flow solutions..."<<endl;
+	stokesDial;
+	stokesBlood;
+	dxLast[]=dxh[];
+	bxLast[]=bxh[];
+	real bloodResidual=10.;
+	real dialResidual=10.;
+
+	//linear algebra solves. Not using, hence don't waste time with it, but didn't want to throw the code away.	
+	/*
+	matrix Kb=diffusiveTermBlood(VhBlood,VhBlood,solver=UMFPACK);
+	matrix Bb=pressureTermBlood(VhBlood,QhBlood);
+	matrix Mp=pressurePrecond(QhBlood,QhBlood,solver=UMFPACK);
+	matrix Bbt=Bb';
+	Bbt=-Bbt;
+	matrix Ab;
+	matrix Cb;
+	matrix bloodSystem;
+
+	real[int] bloodSol(VhBlood.ndof+QhBlood.ndof);
+	real[int] bloodNSRHSBase(VhBlood.ndof+QhBlood.ndof);
+	real[int] bloodNSRHS(VhBlood.ndof+QhBlood.ndof);
+	bloodNSRHSBase(VhBlood.ndof:(VhBlood.ndof+QhBlood.ndof-1))=0;	1
+	bloodNSRHSBase(0:VhBlood.ndof-1)=diffusiveTermBlood(0,VhBlood);
+
+
+	real[int] tempSolPressure(QhBlood.ndof);
+	real[int] tempSolVelocity(VhBlood.ndof);
+	real[int] velocityRHS(VhBlood.ndof);
+	real[int] pressureRHS(QhBlood.ndof);
+
+	real[int] precondSol(VhBlood.ndof+QhBlood.ndof);
+
+	func real[int] trianglePrecond(real[int]&xx)
+	{
+		pressureRHS=xx(VhBlood.ndof:(VhBlood.ndof+QhBlood.ndof-1));
+		tempSolPressure=Mp^-1*pressureRHS;
+		velocityRHS=Bbt*tempSolPressure;
+		velocityRHS=-velocityRHS;
+		velocityRHS+=xx(0:VhBlood.ndof-1);
+		tempSolVelocity=Kb^-1*velocityRHS;
+	
+		precondSol(0:VhBlood.ndof-1)=tempSolVelocity;
+		precondSol(VhBlood.ndof:(VhBlood.ndof+QhBlood.ndof-1))=tempSolPressure;
+		return precondSol;
+
+	}
+
+
+	bloodSystem=[[Kb, Bbt],[Bb, 0]];
+	set(bloodSystem,solver=GMRES, precon=trianglePrecond);
+	bloodSol=bloodSystem^-1*bloodNSRHSBase;
+	bxT[]=bloodSol(0:VhBlood.ndof-1);
+	pbT[]=bloodSol(VhBlood.ndof:(VhBlood.ndof+QhBlood.ndof-1));
+	real DDDD=checkScalarRelativeResidual(pbh,pbT,ThBlood);
+	cout<<"Test "<<DDDD<<endl;
+
+	bloodNSRHS(0:(VhBlood.ndof+QhBlood.ndof-1))=0;
+	*/
+	for(int i=0; i<maxIterations; i++)
+	{
+		if(dialResidual >1e-1 && bloodResidual > 1e-1)
+			{nsDial; nsBlood; }
+		else
+			{nsDialNewton; nsBloodNewton;}
+	
+	
+		dialResidual=checkVectorRelativeResidualMesh(dxh,dyh,dxLast,dyLast,ThDial);
+		bloodResidual=checkVectorRelativeResidualMesh(bxh,byh,bxLast,byLast,ThBlood);
+		cout<<"Blood residual = "<< bloodResidual<<". Dialysate residual = "<< dialResidual<<"."<<endl;
+		if((bloodResidual<tolerance) && (dialResidual < tolerance))
+		{
+			cout<<"Convergence achieved."<<endl;
+			break;
+		}		
+		dxLast[]=dxh[];
+		bxLast[]=bxh[];
+	
+
+		/*
+		varf trilinearBloodPicard([bxh,byh],[vxbh,vybh])=
+			int2d(ThBlood)(y*formaTrilinare(bxLast,byLast,bxh,byh,vxbh,vybh) );
+		;
+			varf trilinearBloodNewton([bxh,byh],[vxbh,vybh])=
+			int2d(ThBlood)(y*formaTrilinare(bxLast,byLast,bxh,byh,vxbh,vybh) );
+			+int2d(ThBlood)(y*formaTrilinare(bxh,byh,bxLast,byLast,vxbh,vybh) )
+		;
+	
+		varf trilinearBloodRHS([bxh,byh],[vxbh,vybh])=
+			int2d(ThBlood)(y*formaTrilinare(bxLast,byLast,bxLast,byLast,vxbh,vybh) );
+		if(bloodResidual > 1e-1)
+			{Cb=trilinearBloodPicard(VhBlood,VhBlood);}
+		else
+		{
+			Cb=trilinearBloodNewton(VhBlood,VhBlood);
+			bloodNSRHS(0:VhBlood.ndof-1)=trilinearBloodRHS(0,VhBlood);
+		}
+		bloodNSRHS=bloodNSRHS+bloodNSRHSBase;
+		Ab=Kb+Cb;
+		set(Ab,solver=UMFPACK);
+		bloodSystem=[[Ab,Bbt],[Bb,0]];	
+		set(bloodSystem,solver=UMFPACK);//,precon=trianglePrecond);
+		*/	
+		//nsBlood;
+		
+		//bloodNSRHS(0:VhBlood.ndof-1)+=trilinearBloodRHS(0,VhBlood);
+		//bloodSol=bloodSystem^-1*bloodNSRHS;
+		//bxh[]=bloodSol(0:VhBlood.ndof-1);
+		//pbh[]=bloodSol(VhBlood.ndof:(VhBlood.ndof+QhBlood.ndof-1));
+	
+	}
+	cout<<"Writing solutions..."<<endl;
+	ofstream writeBlood(bloodComputed);
+	ofstream writeDial(dialComputed);
+	ofstream writeBloodPressure(bloodPressureComputed);
+	ofstream writeDialPressure(dialPressureComputed);
+
+	writeBlood <<bxh[];
+	writeDial << dxh[];
+	writeBloodPressure << pbh[];
+	writeDialPressure << pdh[];
+}
+real bloodFlow=int1d(ThBlood,1)( [bxh,byh]'*[N.x,N.y]*y);
+real dialFlow=int1d(ThDial,7)( [dxh,dyh]'*[N.x,N.y]*y);
+cout<<"Blood flow = "<< bloodFlow <<" ml/s."<<endl;
+cout<<"Dialysate flow = "<< dialFlow <<" ml/s."<<endl;
+WSSBlood;
+WSSBloodSig;
+//exporting outputs.
+vtkVectorVariableExporter(bxWSS,byWSS,"WSS", ThBlood, simResults,"SimTest","WSS",".vtk")
+vtkScalarVariableExporter(WSSVal,"WSSVal", ThBlood, simResults,"SimTest","WSSVal",".vtk")
+vtkScalarVariableExporter(WSSSig,"WSSSig", ThBlood, simResults,"SimTest","WSSSig",".vtk")
+vtkVectorVariableExporter(bxh,byh,"Blood", ThBlood, simResults,"SimTest","blood",".vtk")
+vtkScalarVariableExporter(pbh,"BloodPressure", ThBlood, simResults,"SimTest","bloodpressure",".vtk")
+vtkVectorVariableExporter(dxh,dyh,"Dial", ThDial, simResults,"SimTest","dial",".vtk")
+vtkScalarVariableExporter(pdh,"DialPressure", ThDial, simResults,"SimTest","dialpressure",".vtk")
+cbhOld[]=cbhLast[];
+cdhOld[]=cdhLast[];
+//real origBalance=int2d(ThBlood)(cbhLast);
+real[int] bloodRHS(QhBlood.ndof);
+real[int] dialRHS(QhDial.ndof);
+matrix KBlood=bloodBEVarf(QhBlood,QhBlood,solver=UMFPACK);
+bloodRHS=bloodBERHS(0,QhBlood);
+bloodRHS+=bloodBEVarf(0,QhBlood);
+matrix KDial=dialysateBEVarf(QhDial,QhDial,solver=UMFPACK);
+dialRHS=dialysateBERHS(0,QhDial);
+dialRHS+=dialysateBEVarf(0,QhDial);
+real clearance;
+//this solves the transport equations by forming the system
+//where b is blood, d is dialysate:
+// [A_b B_bd^T] [b] = [f_b]
+// [B_bd A_d ]  [d] = [f_d]
+// and solving monolithically.
+matrix matricone;
+real bloodIn, bloodOut, dialIn, dialOut, imbalance,monolithicTime;
+if(transportSolverType=="monolithic")
+{
+	
+	monolithicTime=clock();
+	cout<<"Solving transport equations monolithically."<<endl;
+	matrix coupling=bloodBERHSMat(QhBlood,QhDial);
+	matrix couplingT=coupling';
+	real[int] fullSysRHS(QhDial.ndof+QhBlood.ndof);
+	real[int] fullSysSol(QhDial.ndof+QhBlood.ndof);
+	fullSysRHS(0:QhDial.ndof-1)=dialysateBEVarf(0,QhDial);
+	fullSysRHS(QhDial.ndof:(QhDial.ndof+QhBlood.ndof-1))=bloodBEVarf(0,QhBlood);
+	real[int] precondBloodRHS(QhBlood.ndof);
+	real[int] precondDialRHS(QhDial.ndof);
+	real[int] precondBloodSol(QhBlood.ndof);
+	real[int] precondDialSol(QhDial.ndof);
+	real[int] precondFullSol(QhBlood.ndof+QhDial.ndof);
+
+	func real[int] blockGSPrecond(real[int]&xx)
+	{
+		precondBloodRHS=xx(QhDial.ndof:(QhBlood.ndof+QhDial.ndof-1));
+		precondBloodSol=KBlood^-1*precondBloodRHS;
+		precondDialRHS=coupling*precondBloodSol;
+		precondDialRHS=-precondDialRHS;
+		precondDialRHS=precondDialRHS+xx(0:QhDial.ndof-1);
+		precondDialSol=KDial^-1*precondDialRHS;
+		precondFullSol(0:QhDial.ndof-1)=precondDialSol;
+		precondFullSol(QhDial.ndof:(QhDial.ndof+QhBlood.ndof-1))=precondBloodSol;
+		return precondFullSol;
+	}
+
+	func real[int] blockJacobiPrecond(real[int]&xx)
+	{
+		precondBloodRHS=xx(QhDial.ndof:(QhBlood.ndof+QhDial.ndof-1));
+		precondDialRHS=xx(0:QhDial.ndof-1);
+		precondBloodSol=KBlood^-1*precondBloodRHS;
+		precondDialSol=KDial^-1*precondDialRHS;
+		precondFullSol(0:QhDial.ndof-1)=precondDialSol;
+		precondFullSol(QhDial.ndof:(QhDial.ndof+QhBlood.ndof-1))=precondBloodSol;
+		return precondFullSol;
+	}
+
+
+	matricone=[[KDial, coupling],[couplingT,KBlood]];
+//	set(matricone,solver=UMFPACK);
+	if(transportPreconditioner=="gauss-seidel")
+	{
+		cout<<"Solving with Gauss-Seidel preconditioned GMRES."<<endl;
+		set(matricone,solver=GMRES,precon=blockGSPrecond);
+	}
+	else if(transportPreconditioner=="jacobi")
+	{
+		cout<<"Solving with Jacobi preconditioned GMRES."<<endl;
+		set(matricone,solver=GMRES,precon=blockJacobiPrecond);
+	}
+	else
+	{
+		cout<<"Solving directly."<<endl;
+		set(matricone,solver=UMFPACK);
+	}
+	fullSysSol=matricone^-1*fullSysRHS;
+	cdh[]=fullSysSol(0:QhDial.ndof-1);
+	cbh[]=fullSysSol(QhDial.ndof:(QhDial.ndof+QhBlood.ndof-1));
+
+	bloodIn=abs(int1d(ThBlood,1)(y*cbh*[bxh,byh]'*[N.x,N.y]));
+	bloodOut=abs(int1d(ThBlood,3)(y*cbh*[bxh,byh]'*[N.x,N.y]));
+	dialIn=abs(int1d(ThDial,7)(y*cdh*[dxh,dyh]'*[N.x,N.y]));
+	dialOut=abs(int1d(ThDial,5)(y*cdh*[dxh,dyh]'*[N.x,N.y]));
+	imbalance= abs((bloodIn+dialIn)-(dialOut+bloodOut))/(bloodIn+dialIn);
+	clearance = 2.*pi*bloodFlow*(dialOut)/bloodIn;
+	cout<<"Blood in = "<< bloodIn <<". Blood out = "<< bloodOut <<". Dial in = "<< dialIn <<". Dial out = "<<dialOut<<". Imbalance residual= "<<imbalance <<"."<< endl;			
+	cout<<"Clearance = "<<clearance<<"."<<endl;
+	monolithicTime=clock()-monolithicTime;
+	cout<<"Time: "<<monolithicTime<<" seconds."<<endl;
+}
+
+else{
+	real iterativeTime=clock();
+	cbh[]=KBlood^-1*bloodRHS;
+	cdh[]=KDial^-1*dialRHS;
+	matrix coupling=bloodBERHSMat(QhBlood,QhDial);
+	matrix couplingT=coupling';
+	cdhLast[]=cdh[];
+	cbhLast[]=cbh[];
+	cbhOld[]=cbhLast[];
+	cdhOld[]=cdhLast[];
+
+	real origBalance=int2d(ThBlood)(cbhLast)+int2d(ThDial)(cdhLast);
+
+	matricone=[[KDial, coupling],[couplingT,KBlood]];
+
+	real currentTime;
+	real bloodBalance;
+	real dialBalance;
+	real massLoss;
+	real fullBalance;
+	real imbalance;
+	real residBlood=10.;
+	real residDial=10.;
+	real residCheck;
+	real[int]bloodRHSBase=bloodBEVarf(0,QhBlood);
+	real[int]dialRHSBase=dialysateBEVarf(0,QhDial);
+	real[int]fullRHSVector(QhBlood.ndof+QhDial.ndof);
+	real[int]fullSolVector(QhBlood.ndof+QhDial.ndof);
+	real[int]fullResidVector(QhBlood.ndof+QhDial.ndof);
+	fullRHSVector(0:QhDial.ndof-1)=dialRHSBase;
+	fullRHSVector(QhDial.ndof:(QhDial.ndof+QhBlood.ndof-1))=bloodRHSBase;
+
+	for(int i=0; i<numStepsMix;i++)
+	{
+		cout<<"Iteration " << i <<"."<<endl;
+		currentTime=i*dt;
+
+		//bloodRHS=bloodBEVarf(0,QhBlood);
+		//dialRHS=dialysateBEVarf(0,QhDial);
+		if(transportSolverType=="jacobi")
+		{
+			cout<<"Solving transport equations with Jacobi iterations..."<<endl;
+//			bloodRHS=bloodRHSBase;	
+//			bloodRHS+=couplingT*cdhOld[];
+			bloodRHS=couplingT*cdhOld[];
+			bloodRHS=-1*bloodRHS;
+			bloodRHS=bloodRHS+bloodRHSBase;
+//			dialRHS=dialRHSBase;
+			dialRHS=coupling*cbh[];
+			dialRHS=-dialRHS;
+			dialRHS=dialRHS+dialRHSBase;
+//			dialRHS+=coupling*cbhOld[];
+			cdh[]=KDial^-1*dialRHS;
+			cbh[]=KBlood^-1*bloodRHS;
+		}
+		else	
+		{
+			if(transportSolverType=="gauss-seidel")
+				{cout<<"Solving transport equations with Gauss-Seidel iterations..."<<endl;}
+			else
+				{cout<<"Transport solver definition not recognized. Defaulting to Gauss-Seidel solve."<<endl;}
+			//bloodRHS+=bloodBERHS(0,QhBlood);
+			bloodRHS=couplingT*cdhOld[];
+			bloodRHS=-1*bloodRHS;
+			bloodRHS=bloodRHS+bloodRHSBase;
+			//bloodRHS=bloodRHS-couplingT*cdhOld[];
+		//dialRHS=dialRHS+dialRHSBase;
+			cbh[]=KBlood^-1*bloodRHS;
+			dialRHS=coupling*cbh[];
+			dialRHS=-dialRHS;
+			dialRHS=dialRHS+dialRHSBase;//-coupling*cbh[];//dialysateBERHS(0,QhDial);
+			cdh[]=KDial^-1*dialRHS;		
+		}
+		
+		for(int j=0;j<subIterations;j++)
+		{		
+			bloodRHS=bloodBERHS(0,QhBlood);
+			dialRHS=dialysateBERHS(0,QhDial);
+			cbh[]=KBlood^-1*bloodRHS;
+			cdh[]=KDial^-1*dialRHS;
+			cbhOld[]=cbh[];
+			cdhOld[]=cdh[];	
+			massLoss=int1d(ThDial,5)( .2*(cdhOld*nuDial-nuBlood*cbhOld))+int1d(ThBlood,3)( .2*(cbhOld*nuBlood-nuDial*cdhOld));
+			cout<<"Mass loss = "<<massLoss<<"."<<endl;			
+		}
+		
+		//bloodBalance=int2d(ThBlood)(cbh);
+		//dialBalance=int2d(ThDial)(cdh);
+		//fullBalance=bloodBalance+dialBalance;
+		//ofstream risultati(outputFile,append);
+		//risultati<<currentTime<<"	"<<bloodBalance<<"	"<<dialBalance<<"	"<<fullBalance<<"	"<<fullBalance/origBalance<<endl;
+		//cout<<currentTime<<"	"<<bloodBalance<<"	"<<dialBalance<<"	"<<fullBalance<<"	"<<fullBalance/origBalance<<endl;
+	
+		bloodIn=abs(int1d(ThBlood,1)(y*cbh*[bxh,byh]'*[N.x,N.y]));
+		bloodOut=abs(int1d(ThBlood,3)(y*cbh*[bxh,byh]'*[N.x,N.y]));
+		dialIn=abs(int1d(ThDial,7)(y*cdh*[dxh,dyh]'*[N.x,N.y]));
+		dialOut=abs(int1d(ThDial,5)(y*cdh*[dxh,dyh]'*[N.x,N.y]));
+		fullSolVector(0:QhDial.ndof-1)=cdh[];
+		fullSolVector(QhDial.ndof:(QhDial.ndof+QhBlood.ndof-1))=cbh[];
+
+				
+		fullResidVector=matricone*fullSolVector;
+		fullResidVector=-fullResidVector;
+		fullResidVector=fullResidVector+fullRHSVector;
+		residCheck=sqrt(fullResidVector'*fullResidVector);	
+		//residCheck=checkScalarResidual(cdh,cdhOld,ThDial)+checkScalarResidual(cbh,cbhOld,ThBlood);
+			
+		cdhLast[]=cdh[];
+		cbhLast[]=cbh[];
+		cbhOld[]=cbh[];
+		cdhOld[]=cdh[];
+
+		imbalance= abs((bloodIn+dialIn)-(dialOut+bloodOut))/(bloodIn+dialIn);
+		clearance = 2.*pi*bloodFlow*(dialOut)/bloodIn;
+		cout<<"Blood in = "<< bloodIn <<". Blood out = "<< bloodOut <<". Dial in = "<< dialIn <<". Dial out = "<<dialOut<<". Imbalance residual= "<<imbalance <<"."<< endl;			
+		cout<<"Residual = "<< residCheck<<"."<<endl;	
+		cout<<"Clearance = "<<clearance<<"."<<endl;
+		
+		if(residCheck<transportTol)
+		{	
+			iterativeTime=clock()-iterativeTime;
+			cout<<"Convergence achieved in: "<<i<<" iterations. Time: "<<iterativeTime <<" seconds."<<endl;
+			//cout<<checkScalarResidual(cdh,cdhLast2,ThDial)<<endl; 
+
+			string gridConvFile;//="/Users/alexviguerie/Documents/MATLAB/Dialisi/Grid_Convergence/";
+			gridConvFile=directory+meshAppend;
+			ofstream gridDataOut(gridConvFile,append);	
+			real bloodMeshSize=0;
+			real dialMeshSize=0;
+			for(int i=0; i<hBlood.n ; i++)
+				{bloodMeshSize=bloodMeshSize+hBlood[](i);}
+			for(int i=0; i<hDial.n ; i++)
+				{dialMeshSize=dialMeshSize+hDial[](i);}
+			bloodMeshSize=bloodMeshSize/hBlood.n;
+			dialMeshSize=dialMeshSize/hDial.n;
+
+
+			gridDataOut <<n<<"	"<<QhBlood.ndof+QhDial.ndof<<"	"<<bloodMeshSize<<"	"<<dialMeshSize<<"	"<<"	"<<2.*wssThresh<<"	"<<rapidity<<"	"<<tortuosity <<"	"<<bloodIn<<"	"<<bloodOut<<"	"<<dialIn<<"	"<<dialOut<<"	"<<clearance<<"	"<<i<<"	"<<iterativeTime<<endl;
+			cout <<n<<"	"<<QhBlood.ndof+QhDial.ndof<<"	"<<bloodMeshSize<<"	"<<dialMeshSize<<"	"<<2.*wssThresh<<"	"<<rapidity<<"	"<<tortuosity <<"	"<<bloodIn<<"	"<<bloodOut<<"	"<<dialIn<<"	"<<dialOut<<"	"<<clearance<<"	"<<i<<"	"<<iterativeTime<<endl;
+
+			break;
+		}
+	}
+
+}
+
+if(gridConvergenceStudy==true && transportSolverType=="monolithic")
+{
+	real bloodPDrop=(int1d(ThBlood,1)(y*pbh)-int1d(ThBlood,3)(y*pbh))/int1d(ThBlood,1)(y*1.);
+	real dialPDrop=(int1d(ThDial,7)(y*pdh)-int1d(ThDial,5)(y*pdh))/int1d(ThDial,7)(y*1.);
+	real wssMax=WSSVal[].max;
+	wssMax=8.*wssMax;
+	real bloodMeshSize=0;
+	real dialMeshSize=0;
+	for(int i=0; i<hBlood.n ; i++)
+		{bloodMeshSize=bloodMeshSize+hBlood[](i);}
+	for(int i=0; i<hDial.n ; i++)
+		{dialMeshSize=dialMeshSize+hDial[](i);}
+	bloodMeshSize=bloodMeshSize/hBlood.n;
+	dialMeshSize=dialMeshSize/hDial.n;
+
+
+	string gridConvFile;//="/Users/alexviguerie/Documents/MATLAB/Dialisi/Grid_Convergence/";
+	gridConvFile=directory+meshAppend;
+	ofstream gridDataOut(gridConvFile,append);
+
+//	gridDataOut <<n<<"	"<<bloodMeshSize<<"	"<<dialMeshSize<<"	"<<"	"<<2.*wssThresh<<"	"<<rapidity<<"	"<<tortuosity <<"	"<<bloodIn<<"	"<<bloodOut<<"	"<<dialIn<<"	"<<dialOut<<"	"<<clearance<<"	"<<monolithicTime<<endl;
+//	cout <<n<<"	"<<bloodMeshSize<<"	"<<dialMeshSize<<"	"<<2.*wssThresh<<"	"<<rapidity<<"	"<<tortuosity <<"	"<<bloodIn<<"	"<<bloodOut<<"	"<<dialIn<<"	"<<dialOut<<"	"<<clearance<<"	"<<monolithicTime<<endl;
+	gridDataOut <<n<<"	"<<QhBlood.ndof+QhDial.ndof<<"	"<<2.*wssThresh<<"	"<<rapidity<<"	"<<tortuosity <<"	"<<bloodIn<<"	"<<bloodOut<<"	"<<dialIn<<"	"<<dialOut<<"	"<<clearance<<"	"<<monolithicTime<<endl;
+	cout <<n<<"	"<<QhBlood.ndof+QhDial.ndof<<"	"<<2.*wssThresh<<"	"<<rapidity<<"	"<<tortuosity <<"	"<<bloodIn<<"	"<<bloodOut<<"	"<<dialIn<<"	"<<dialOut<<"	"<<clearance<<"	"<<monolithicTime<<endl;
+}
+string dialString="ConcenDial";
+string bloodString="ConcenBlood";
+
+ofstream writeBloodTransport(bloodTransportComputed);
+ofstream writeDialTransport(dialTransportComputed);
+
+writeBloodTransport << cbh[];
+writeDialTransport << cdh[];
+
+vtkScalarVariableExporter(cdh,"Concentration", ThDial,simResults,"ASimTestConc",dialString,".vtk")
+vtkScalarVariableExporter(cbh,"Concentration", ThBlood, simResults,"ASimTestConc",bloodString,".vtk")

@@ -1,0 +1,502 @@
+You chose the file "C:\Users\P70073624\Desktop\SangitaStuff\SangitaStuff\MicroScaleCodePreconditioningStudy-SS.txt"
+-- FreeFem++ v4.5 (mar. 11 f√©vr. 2020 20:59:29 - git v4.5-2-g95135963)
+ Load: lg_fem lg_mesh lg_mesh3 eigenvalue
+    1 : load "Element_P3"(load: loadLibary C:\Program Files (x86)\FreeFem++\\.\Element_P3 = 0)
+    2 : load "UMFPACK64"(load: loadLibary C:\Program Files (x86)\FreeFem++\\.\UMFPACK64 = 0)
+    3 : load "gmsh"(load: loadLibary C:\Program Files (x86)\FreeFem++\\.\gmsh = 0)
+    4 : load "medit"(load: loadLibary C:\Program Files (x86)\FreeFem++\\.\medit = 0)
+    5 :
+    6 : include "variableExporter.edp"load "iovtk"(load: loadLibary C:\Program Files (x86)\FreeFem++\\.\iovtk = 0) load:     )  iovtk
+;
+    2 :
+    3 : macro variablePath(variableDirectory,simulationName,variableType,extension)( ( (variableDirectory+simulationName     ) )+variableType ) +extension )  )  //
+    4 :
+    5 : macro itsCool(x1,x2){real k4= x1+x2;} )  //
+    6 :
+    7 : macro vtkScalarVariableExporter(variableValue,varName, Th, variableDirectory,simulationName,variableType,extensi     ) on){
+    8 #                                 ofstream fileOutput(variablePath(variableDirectory,simulationName,variableType,e     ) xtension) );
+    9 #                                 fespace VhC(Th, P2);
+   10 #                                 VhC[int] uh(2);
+   11 #                                 uh[0] = x;
+   12 #                                 uh[1] = y;
+   13 #
+   14 #
+   15 #                                 int nvertices = Th.nv;
+   16 #                                 int ntriangles = Th.nt;
+   17 #                                 int size = VhC.ndof;
+   18 #
+   19 #
+   20 #
+   21 #
+   22 #
+   23 #                                 fileOutput << "# vtk DataFile Version 3.0 "<< endl;
+   24 #                                 fileOutput << "output.vtk, Created by Freefem++" << endl;
+   25 #                                 fileOutput << "ASCII" << endl;
+   26 #                                 fileOutput << "DATASET UNSTRUCTURED_GRID" << endl;
+   27 #
+   28 #
+   29 #
+   30 #
+   31 #                                 real iter=0;
+   32 #                                 fileOutput << "POINTS " << size << " double" << endl;
+   33 #                                 for ( int i = 0; i < size; i++)
+   34 #                                 {
+   35 #                                         real Thx = uh[0][][i];
+   36 #                                         real Thy = uh[1][][i];
+   37 #                                         fileOutput << Thx  << " " << Thy << " " << 0 << endl;
+   38 #                                 }
+   39 #                                 fileOutput << endl;
+   40 #
+   41 #
+   42 #
+   43 #
+   44 #
+   45 #
+   46 #                                 fileOutput << "CELLS " << ntriangles<< " "<< 4*ntriangles << endl;
+   47 #                                 for( int i = 0;i<ntriangles; i++)
+   48 #                                         {
+   49 #                                                 fileOutput << 3 << " ";
+   50 #                                                 for(int j = 0; j<3;j++)
+   51 #                                                 {
+   52 #                                                         fileOutput << VhC(i,j) << " ";
+   53 #                                                 }
+   54 #                                                 fileOutput << endl;
+   55 #                                         }
+   56 #
+   57 #
+   58 #
+   59 #
+   60 #
+   61 #
+   62 #                                 fileOutput << "CELL_TYPES " << ntriangles << endl;
+   63 #                                 for(int i=0;i<ntriangles;i++)
+   64 #                                 {
+   65 #                                         fileOutput << "5 ";
+   66 #                                 }
+   67 #                                 fileOutput << endl;
+   68 #
+   69 #
+   70 #
+   71 #
+   72 #
+   73 #                                 fileOutput << "POINT_DATA " << size << endl;
+   74 #                                 fileOutput << " "<< endl;
+   75 #                                 int narray = 1;
+   76 #                                 string[int] name(narray);
+   77 #                                 name[0] = varName ;
+   78 #
+   79 #                                 fileOutput << "FIELD " << "FieldData " << narray << endl;
+   80 #
+   81 #
+   82 #
+   83 #                                 fileOutput <<" " << endl;
+   84 #                                 fileOutput << name[0] << " 1 " << size <<" double" << endl;
+   85 #                                                 for (int i =0; i< size ;i++)
+   86 #                                                 {
+   87 #
+   88 #                                                         real Thx = uh[0][][i];
+   89 #                                                         real Thy = uh[1][][i];
+   90 #                                                         fileOutput << variableValue(Thx,Thy) <<  endl;
+   91 #                                                 }
+   92 #
+   93 #
+   94 #
+   95 #
+   96 #
+   97 #
+   98 # } )  //
+   99 :
+  100 :
+  101 :
+  102 : macro vtkVectorVariableExporter(variableValueX,variableValueY,varName, Th, variableDirectory,simulationName,vari     ) ableType,extension){
+  103 #                                 ofstream fileOutput(variablePath(variableDirectory,simulationName,variableType,e     ) xtension) );
+  104 #                                 fespace VhC(Th, P2);
+  105 #                                 VhC[int] uh(2);
+  106 #                                 uh[0] = x;
+  107 #                                 uh[1] = y;
+  108 #
+  109 #
+  110 #                                 int nvertices = Th.nv;
+  111 #                                 int ntriangles = Th.nt;
+  112 #                                 int size = VhC.ndof;
+  113 #
+  114 #
+  115 #
+  116 #
+  117 #
+  118 #                                 fileOutput << "# vtk DataFile Version 3.0 "<< endl;
+  119 #                                 fileOutput << "output.vtk, Created by Freefem++" << endl;
+  120 #                                 fileOutput << "ASCII" << endl;
+  121 #                                 fileOutput << "DATASET UNSTRUCTURED_GRID" << endl;
+  122 #
+  123 #
+  124 #
+  125 #
+  126 #                                 real iter=0;
+  127 #                                 fileOutput << "POINTS " << size << " double" << endl;
+  128 #                                 for ( int i = 0; i < size; i++)
+  129 #                                 {
+  130 #                                         real Thx = uh[0][][i];
+  131 #                                         real Thy = uh[1][][i];
+  132 #                                         fileOutput << Thx  << " " << Thy << " " << 0 << endl;
+  133 #                                 }
+  134 #                                 fileOutput << endl;
+  135 #
+  136 #
+  137 #
+  138 #
+  139 #
+  140 #
+  141 #                                 fileOutput << "CELLS " << ntriangles<< " "<< 4*ntriangles << endl;
+  142 #                                 for( int i = 0;i<ntriangles; i++)
+  143 #                                         {
+  144 #                                                 fileOutput << 3 << " ";
+  145 #                                                 for(int j = 0; j<3;j++)
+  146 #                                                 {
+  147 #                                                         fileOutput << VhC(i,j) << " ";
+  148 #                                                 }
+  149 #                                                 fileOutput << endl;
+  150 #                                         }
+  151 #
+  152 #
+  153 #
+  154 #
+  155 #
+  156 #
+  157 #                                 fileOutput << "CELL_TYPES " << ntriangles << endl;
+  158 #                                 for(int i=0;i<ntriangles;i++)
+  159 #                                 {
+  160 #                                         fileOutput << "5 ";
+  161 #                                 }
+  162 #                                 fileOutput << endl;
+  163 #
+  164 #
+  165 #
+  166 #
+  167 #
+  168 #                                 fileOutput << "POINT_DATA " << size << endl;
+  169 #                                 fileOutput << " "<< endl;
+  170 #                                 int narray = 1;
+  171 #                                 string[int] name(narray);
+  172 #                                 name[0] = varName ;
+  173 #
+  174 #                                 fileOutput << "FIELD " << "FieldData " << narray << endl;
+  175 #
+  176 #
+  177 #
+  178 #                                 fileOutput <<" " << endl;
+  179 #                                 fileOutput << name[0] << " 3 " << size <<" double" << endl;
+  180 #                                                 for (int i =0; i< size ;i++)
+  181 #                                                 {
+  182 #
+  183 #                                                         real Thx = uh[0][][i];
+  184 #                                                         real Thy = uh[1][][i];
+  185 #                                                         fileOutput << variableValueX(Thx,Thy) << " "<< variableV     ) alueY(Thx,Thy) <<" 0"<< endl;
+  186 #                                                 }
+  187 #
+  188 #
+  189 #
+  190 #
+  191 #
+  192 #
+  193 # } )  //
+  194 :
+    7 : include "2D_Macros.edp"
+    2 : //useful macros
+    3 : //Various stress-tensor macros, helpful for different formulations of the diffusive term.
+    4 : macro vectorLaplacian(uxh,uyh)[-(dxx(uxh)+dyy(uxh)),-(dxx(uyh)+dyy(uyh))] )  //
+    5 : macro vectorGrad(uxh,uyh)[[dx(uxh),dy(uxh)],[dx(uyh),dy(uyh)] ] )  //
+    6 : macro vectorGradDoubleDot(ux,uy)[dx(ux),dy(ux),dx(uy),dy(uy) ] )  //
+    7 : macro terminePressure(ux,uy,p) (p*(dx(ux)+dy(uy)) ) )  //
+    8 : macro skewSym(ux,uy)     [ [0, .5*(dy(ux)-dx(uy))], [.5*(dx(uy)-dy(ux)),0]]  )  //
+    9 : macro skewSymDoubleDot(ux,uy)  [.5*(dy(ux)-dx(uy)),.5*(dx(uy)-dy(ux))]  )  //
+   10 : macro stressTensor(ux,uy)     [[dx(ux), .5*(dy(ux)+dx(uy))],[ .5*(dx(uy)+dy(ux)),dy(uy)]] )  //
+   11 : macro stressTensorDoubleDot(ux,uy) [dx(ux), .5*(dy(ux)+dx(uy)), .5*(dx(uy)+dy(ux)),dy(uy) ]  )  //
+   12 : macro termineDiffusiva(ux,uy,vx,vy) (2*stressTensorDoubleDot(ux,uy)'*vectorGradDoubleDot(vx,vy)) )  //
+   13 : macro termineDiffusivaLaplace(ux,uy,vx,vy) (vectorGradDoubleDot(ux,uy)'*vectorGradDoubleDot(vx,vy)) )  //
+   14 : macro divSym(ux,uy)     [dxx(ux)+ .5*(dyy(ux)+dxy(uy)), .5*(dxx(uy)+dyx(ux))+dyy(uy)] )  //
+   15 : macro stressTensor2(p) [ [p,0],[0, p]]  )  //
+   16 : macro vectorDiv(ux,uy)(dx(ux)+dy(uy) ) )  //
+   17 : macro gradDivStab(ux,uy,vx,vy)( (dx(ux)+dy(uy))*(dx(vx)+dy(vy)) )  )  //
+   18 : macro neumannBoundaryLaplace(uxh,uyh,vxh,vyh,p,nu) ( (nu*vectorGrad(uxh,uyh)*[N.x,N.y])'*[vxh,vyh]-p*[N.x,N.y]'*     ) [vxh,vyh] )  )  //
+   19 : macro neumannBoundaryFullTensor(uxh,uyh,vxh,vyh,p,nu) ( (nu*stressTensor(uxh,uyh)*[N.x,N.y])'*[vxh,vyh]-p*[N.x,N     ) .y]'*[vxh,vyh] )  )  //
+   20 : macro computeWSS(nu,uxh,uyh)( nu*stressTensor(uxh,uyh)*[N.x,N.y] - nu*((stressTensor(uxh,uyh)*[N.x,N.y])'*[N.x,N     ) .y])*[N.x,N.y])  )  //
+   21 : //macro computeWSSAxi(nu,uxh,uyh)( (nu*axiNormal*stressTensor(uxh,uyh)*[0,N.y] + axiNormal*nu*(1./y)*uyh*[0,N.y]     )  - nu*((axiNormal*stressTensor(uxh,uyh)*[0,N.y])'*[0,N.y]*axiNormal)*[0,N.y]*axiNormal - nu*(1./y)*((uyh*axiNormal*[0,N.     ) y])'*[0,N.y]*axiNormal)*[0,N.y]*axiNormal) ) //
+   22 : //Macros for the trilinear form
+   23 : macro UdotGradU (upx,upy,ux,uy)[upx*dx(ux)+upy*dy(ux), upx*dx(uy) + upy*dy(uy) ]  )  //
+   24 : macro formaTrilinare(upx,upy,ux,uy,vx,vy) (UdotGradU(upx,upy,ux,uy)'*[vx,vy] )  )  //
+   25 : macro formaTrilinareLeo(upx,upy,ux,uy,vx,vy) (.5*UdotGradU(upx,upy,ux,uy)'*[vx,vy] - .5*UdotGradU(upx,upy,vx,vy)     ) '*[ux,uy] )  )  //
+   26 :
+   27 :
+   28 :
+   29 : //Macro for strongly consistent stabilization techniques
+   30 : macro pGrad(p)[dx(p),dy(p) ]  )  //
+   31 :
+   32 : //macro supgTerm(ux,uy,upx,upy,p)[ nu*vectorLaplacian(ux,uy) + UdotGradU(upx,upy,ux,uy)+ pGrad(p) ]//
+   33 : macro stabTerm1(ux,uy,upx,upy,p,nu)[-nu*dxx(ux)-nu*dyy(ux)+upx*dx(ux)+upy*dy(ux)+dx(p),
+   34 #                                                                         -nu*dxx(uy)-nu*dyy(uy)+upx*dx(uy)+upy*dy     ) (uy)+dy(p) ] )  //
+   35 : macro galsStabTerm2(ux,uy,upx,upy,p,nu)[-nu*dxx(ux)-nu*dyy(ux)+upx*dx(ux)+upy*dy(ux)+dx(p),
+   36 #                                                                             -nu*dxx(uy)-nu*dyy(uy)+upx*dx(uy)+up     ) y*dy(uy)+dy(p) ] )  //
+   37 : macro supgStabTerm2(ux,uy,upx,upy,p)[upx*dx(ux) + upy*dy(ux) + dx(p),
+   38 #                                                                          upx*dx(uy) + upy*dy(uy) + dy(p) ]  )  /     ) /
+   39 : macro modStabTerm1(ux,uy,ix,iy,p,nu)[-nu*dxx(ux)-nu*dyy(ux)+ix*dx(ux)+iy*dy(ux)+dx(p),
+   40 #                                                                                                  -nu*dxx(uy)-nu*     ) dyy(uy)+ix*dx(uy)+iy*dy(uy)+dy(p) ] )  //
+   41 : macro modStabExplTerm(upx,upy,diffx,diffy)[diffx*dx(upx) + diffy*dy(upx),
+   42 #                                                                                    diffx*dx(upy)+diffy*dy(upy) ]     )  )  //
+   43 : macro modStabTerm2SUPG(ux,uy,ix,iy,p,nu)[ix*dx(ux) + iy*dy(ux) + dx(p),
+   44 #                                                                       ix*dx(uy) + iy*dy(uy) + dy(p) ]  )  //
+   45 : macro modStabTerm2GALS(ux,uy,ix,iy,p,nu)[-nu*dxx(ux)-nu*dyy(ux)+ix*dx(ux)+iy*dy(ux)+dx(p),
+   46 #                                                                              -nu*dxx(uy)-nu*dyy(uy)+ix*dx(uy)+iy     ) *dy(uy)+dy(p) ] )  //
+   47 : macro galsStab(ux,uy,upx,upy,vx,vy,p,q,nu)( stabTerm1(ux,uy,upx,upy,p,nu)'*galsStabTerm2(vx,vy,upx,upy,q,nu) )
+)  //
+   48 : macro supgStab(ux,uy,upx,upy,vx,vy,p,q,nu)( stabTerm1(ux,uy,upx,upy,p,nu)'*supgStabTerm2(vx,vy,upx,upy,q) )  )
+//
+   49 : macro modStab(ux,uy,ix,iy,vx,vy,p,q,nu)( modStabTerm1(ux,uy,ix,iy,p,nu)'*modStabTerm2SUPG(vx,vy,ix,iy,q,nu) ) )
+     )  //
+   50 : macro modStabExp(upx,upy,diffx,diffy,ix,iy,vx,vy,p,q,nu)( modStabExplTerm(upx,upy,diffx,diffy)'*modStabTerm2SUPG     ) (vx,vy,ix,iy,q,nu) ) )  //
+   51 : macro modStabAsym(ux,uy,upx,upy,ix,iy,vx,vy,p,q,nu)( modStabTerm1(ux,uy,upx,upy,p,nu)'*modStabTerm2SUPG(vx,vy,ix     ) ,iy,q,nu) ) )  //
+   52 :
+   53 : //Macros for linear kinetic formulation
+   54 : macro kineticVelocityStressGrad(ux,uy,Txx,Txy,Tyx,Tyy)(vectorGradDoubleDot(ux,uy)'*[Txx,Txy,Tyx,Tyy])  )  //
+   55 : macro kineticVelocityStressTensor(ux,uy,Txx,Txy,Tyx,Tyy)(2*stressTensorDoubleDot(ux,uy)'*[Txx,Txy,Tyx,Tyy])  )
+//
+   56 :
+   57 : macro tensorDiv(Txx,Txy,Tyx,Tyy) ( [dx(Txx)+dy(Txy), dx(Tyx)+dy(Tyy) ] ) )  //
+   58 : macro kineticVelocityStressGradIBP(ux,uy,Txx,Txy,Tyx,Tyy)( [ux,uy]'*tensorDiv(Txx,Txy,Tyx,Tyy) )  )  //
+   59 : macro kineticVelocityBoundaryTerm(Txx,Txy,Tyx,Tyy)( [ [Txx, Txy],[Tyx, Tyy] ] )  )  //
+   60 : macro kineticVelocityDiadicProduct(uxold,uyold,uxh,uyh)( [uxh*uxold, uxh*uyold, uyh*uxold,uyh*uyold ]  )  )  //
+     )  
+   61 : macro kineticVelocityDiadicProductTensor(uxold,uyold,uxh,uyh)( [ [uxh*uxold, uxh*uyold], [uyh*uxold,uyh*uyold] ]     )   )  )  //
+   62 :
+   63 : macro kineticVelocityNonlinearTerm(uxold,uyold,uxh,uyh,Txx,Txy,Tyx,Tyy)( kineticVelocityDiadicProduct(uxold,uyol     ) d,uxh,uyh)'*[Txx,Txy,Tyx,Tyy]  )  )  //
+   64 :
+   65 :
+   66 : //Useful for residual computation:
+   67 : macro checkVectorResidual(ux1,uy1,ux2,uy2) ( sqrt( abs( int2d(Th)( (ux1-ux2)^2 + (uy1-uy2)^2) ) ) )  )  //
+ 
+   68 : macro checkVectorResidualMesh(ux1,uy1,ux2,uy2,msh) ( sqrt( abs( int2d(msh)( (ux1-ux2)^2 + (uy1-uy2)^2) ) ) )  )
+     )  //
+   69 : macro vectorNorm(ux,uy)( sqrt( abs(int2d(Th) (ux^2+uy^2) ) ) ) )  //
+   70 : macro vectorNormMesh(ux,uy,msh)( sqrt( abs(int2d(msh) (ux^2+uy^2) ) ) ) )  //
+   71 :
+   72 : macro checkScalarResidual(p1,p2,Th) ( sqrt(abs(int2d(Th)( (p1-p2)^2) ) ) )  )  //
+   73 : macro scalarNorm(p,Th) (sqrt(abs(int2d(Th)(p^2) ) ) )  )  //
+   74 : macro checkVectorRelativeResidual(ux1,uy1,ux2,uy2)(checkVectorResidual(ux1,uy1,ux2,uy2)/vectorNorm(ux2,uy2) ) )
+     )  //
+   75 : macro checkVectorRelativeResidualMesh(ux1,uy1,ux2,uy2,msh)(checkVectorResidualMesh(ux1,uy1,ux2,uy2,msh)/vectorNo     ) rmMesh(ux2,uy2,msh) ) )  //
+   76 :
+   77 : macro checkScalarRelativeResidual(p1,p2,Th)(checkScalarResidual(p1,p2,Th)/scalarNorm(p2,Th) ) )  //
+   78 : //I don't really use these, but if you want to monitor residuals with velocity and pressure they're useful.
+   79 : macro checkVectorScalarResidual(ux,uy,upx,upy,p,pp)(sqrt(abs(int2d(Th)((ux-upx)^2+(uy-upy)^2+ (p-pp)^2 ) ) ) )
+)  //
+   80 : macro vectorScalarNorm(ux,uy,p)(sqrt(abs(int2d(Th)((ux)^2+(uy)^2 +(p)^2 ) ) ) )  )  //
+   81 : macro checkVectorScalarRelativeResidual(ux,uy,upx,upy,p,pp)(checkVectorScalarResidual(ux,uy,upx,upy,p,pp)/vector     ) ScalarNorm(upx,upy,pp) )  )  //
+   82 : macro checkVectorScalarVecNorm(ux,uy,p)(ux[].linfty+uy[].linfty+p[].linfty)  )  //
+   83 : macro vectorH1Norm(ux,uy) ( sqrt( abs(int2d(Th) (ux^2+uy^2 +dx(ux)^2+dy(ux)^2+dx(uy)^2+dy(uy)^2) ) ) )  )  //
+   84 :
+   85 : macro checkVectorH1Residual(ux1,uy1,ux2,uy2)  sqrt( abs ( int2d(Th)( (ux1-ux2)^2 + (uy1-uy2)^2 + ( dx(ux1)-dx(ux     ) 2))^2 + (dx(uy1)-dx(uy2))^2 +  (dy(ux1)-dy(ux2))^2 + (dy(uy1)-dy(uy2))^2 ) ) )  )  //
+   86 : macro checkVectorH1RelativeResidual(ux1,uy1,ux2,uy2) ( checkVectorH1Residual(ux1,uy1,ux2,uy2)/vectorH1Norm(ux2,u     ) y2) )  )  //
+   87 : macro matrixH1Norm(K,uxh)(sqrt(abs( (uxh)'*(K*uxh) ) ) )  )  //
+   88 : macro checkFlux(uxh,uyh,lab)( int1d(Th,lab)([uxh,uyh]'*[N.x,N.y] )  )  )  //
+   89 : //macro steadyResidualVector(uxh,uyh,ph,nu) ( [ -nu*dxx(uxh) - nu*dyy(uxh) + uxh*dx(uxh)+uyh*dy(uxh) + dx(ph) ,
+     )   -nu*dxx(uyh) - nu*dyy(uyh) + uxh*dx(uyh)+uyh*dy(uyh) + dy(ph) ]    ) //
+   90 : //macro checkSteadyResidualNoForcing(uxh,uyh,ph,nu) ( steadyResidualVector(uxh,uyh,ph,nu)'*steadyResidualVector(     ) uxh,uyh,ph,nu)    ) //
+   91 : macro checkSteadyResidualNoForcing(uxh,uyh,ph,nu,vxh,vyh) ( -nu*termineDiffusivaLaplace(uxh,uyh,vxh,vyh) +  form     ) aTrilinare(uxh,uyh,uxh,uyh,vxh,vyh) - terminePressure(vxh,vyh,ph)     )  )  //
+   92 : macro initiateGlobalMesh(x0,y0,L,Hstart,Hfinal,nX,nY, boundaryLabel,flag) (square(L*nX, (Hstart/Hfinal)*nY, [x0
+     ) + L*x, y0 + Hstart*y],label=boundaryLabel,flags=flag ) )  )  //  ˇ
+    8 : //include "MeshPlay.edp"
+    9 :
+   10 : //calcolo il normal. perche' c'e' un scaling (inizialmente dichiaro una geometria con L 80, poi lo riscalo), c'e     ) ' questo fattore di 4
+   11 : macro funcDeriv(tort,r,buffer,L) ( 0. + tort*r*pi*cos(4.*r*pi*x)*(x>.25*buffer && x < .25*(L - buffer)) )  )  //     )  
+   12 : macro normalVector(tort,r,buffer,L) ( (1./sqrt(1.+funcDeriv(tort,r,buffer,L)*funcDeriv(tort,r,buffer,L)))*[1.,-f     ) uncDeriv(tort,r,buffer,L)] ) )  //
+   13 : //calcolo pure il WSS
+   14 : macro computeWSSAxi(nu,uxh,uyh,tort,r,buffer,L)( (nu*stressTensor(uxh,uyh)*normalVector(tort,r,buffer,L) -nu*((s     ) tressTensor(uxh,uyh)*normalVector(tort,r,buffer,L))'*normalVector(tort,r,buffer,L))*normalVector(tort,r,buffer,L)  )  )
+     )  //
+   15 :
+   16 : //macro computeWSSAxi(nu,uxh,uyh,tort,r,buffer,L))( (nu*axiNormal*stressTensor(uxh,uyh)*[0,N.y] - nu*((axiNormal     ) *stressTensor(uxh,uyh)*[0,N.y])'*[0,N.y]*axiNormal)*[0,N.y]*axiNormal ) ) //
+   17 : macro axiNormal() ((1./y) )//
+   18 :
+   19 : //macro che servono varie robe
+   20 : macro WSSMag(nu,uxh,uyh)(sqrt(computeWSSAxi(nu,uxh,uyh,tort,r,buffer,L))'*computeWSSAxi(nu,uxh,uyh,tort,r,buffer     ) ,L))))) )  ///
+   21 : //macro WSSSigmoid4(threshhold,nu,uxh,uyh,tort,r,buffer,L)(( exp(- ( sqrt(computeWSSAxi(nu,uxh,uyh,tort,r,buffer     ) ,L)'*computeWSSAxi(nu,uxh,uyh,tort,r,buffer,L))-threshhold))) ))/(1.+exp(- ( sqrt(computeWSSAxi(nu,uxh,uyh,tort,r,buffer     ) ,L)'*computeWSSAxi(nu,uxh,uyh,tort,r,buffer,L))-threshhold))) )) )//
+   22 : macro WSSSigmoid2(threshhold,nu,uxh,uyh)( exp(-(y-2.))/(1.+exp(-(y-2.))) )  )  //
+   23 : macro WSSSigmoid5(threshhold,nu,uxh,uyh)( exp(-(sqrt([uxh,uyh]'*[uxh,uyh])-threshhold))/(1.+exp(-(sqrt([uxh,uyh]     ) '*[uxh,uyh])-threshhold))) )  )  //
+   24 : //macro WSSSigmoid4(threshhold,nu,uxh,uyh,tort,r,buffer,L)( exp(-35.*(sqrt(computeWSSAxi(nu,uxh,uyh,tort,r,buffe     ) r,L))'*computeWSSAxi(nu,uxh,uyh,tort,r,buffer,L)))-threshhold))/(1.+exp(-35.*(sqrt(computeWSSAxi(nu,uxh,uyh,tort,r,buffe     ) r,L))'*computeWSSAxi(nu,uxh,uyh,tort,r,buffer,L)))-threshhold))) ) //
+   25 : //macro WSSSigmoid4(threshhold,nu,uxh,uyh,tort,r,buffer,L)( exp(-.0001*(sqrt(computeWSSAxi(nu,uxh,uyh,tort,r,buf     ) fer,L)'*computeWSSAxi(nu,uxh,uyh,tort,r,buffer,L))-threshhold))/(1.+ exp(-.0001*(sqrt(computeWSSAxi(nu,uxh,uyh,tort,r,bu     ) ffer,L)'*computeWSSAxi(nu,uxh,uyh,tort,r,buffer,L))-threshhold)) )))) )  )//
+   26 : //macro WSSSigmoid4(threshhold,nu,uxh,uyh,tort,r,buffer,L)( exp(-1.*(sqrt(abs(computeWSSAxi(nu,uxh,uyh,tort,r,bu     ) ffer,L)'*computeWSSAxi(nu,uxh,uyh,tort,r,buffer,L)))-threshhold))/(1.+ exp(-1.*(sqrt(abs(computeWSSAxi(nu,uxh,uyh,tort,r     ) ,buffer,L)'*computeWSSAxi(nu,uxh,uyh,tort,r,buffer,L)))-threshhold)) )))) )  )//
+   27 : //macro WSSSigmoid4(threshhold,nu,uxh,uyh,tort,r,buffer,L )  ( exp(-35.*(sqrt(computeWSSAxi(nu,uxh,uyh,tort,r,bu     ) ffer,L))'*computeWSSAxi(nu,uxh,uyh,tort,r,buffer,L)))-threshhold))/(1.+exp(-35.*(sqrt(computeWSSAxi(nu,uxh,uyh,tort,r,bu     ) ffer,L))'*computeWSSAxi(nu,uxh,uyh,tort,r,buffer,L)))-threshhold))) ) //
+   28 : macro WSSSigmoid4(threshhold,nu,uxh,uyh,tort,r,buffer,L )  ( exp(-2.5*(sqrt(abs(computeWSSAxi(nu,uxh,uyh,tort,r,     ) buffer,L))'*computeWSSAxi(nu,uxh,uyh,tort,r,buffer,L))))-threshhold))/(1.+exp(-2.5*(sqrt(abs(computeWSSAxi(nu,uxh,uyh,to     ) rt,r,buffer,L))'*computeWSSAxi(nu,uxh,uyh,tort,r,buffer,L))))-threshhold))) )  )  //
+   29 : macro WSSSigmoid3(threshhold,nu,ph)( exp(-20.*(ph-threshhold))/(1.+exp(-20.*(ph-threshhold))) )  )  //
+   30 :
+   31 : //macro WSSQuickComp(nu,uxh,uyh,tort,r,buffer,L) (sqrt(computeWSSAxi(nu,uxh,uyh,tort,r,buffer,L)'*computeWSSAxi(     ) nu,uxh,uyh,tort,r,buffer,L)))//
+   32 : macro WSSQuickComp(nu,uxh,uyh,tort,r,buffer,L) (sqrt(computeWSSAxi(nu,uxh,uyh,tort,r,buffer,L)'*computeWSSAxi(nu     ) ,uxh,uyh,tort,r,buffer,L))))) )  //
+   33 : //label il sangue e dialysate
+   34 : int[int] bloodLabels=[1,2,3,4];
+   35 : int[int] dialysateLabels=[5,6,7,8];
+   36 : int [int] membraneLabels=[9,10,11,12];
+   37 : //il fattore che viene usato per riscalare dal lunghezza 80 in lunghezza 20
+   38 : real shrinkFactor=.25;
+   39 : //output un file che ricorda varie risultati della simulazioen
+   40 : bool gridConvergenceStudy=true;
+   41 : string directory="./";
+   42 : string simulationName="Steady.txt";
+   43 : string meshAppend="Test.txt";
+   44 : //string meshAppend="GaussSeidelPreconditioners.txt";
+   45 :
+   46 : //la cartella per x il vtk
+   47 : string simResults="./SangitaResults/";
+   48 : string outputFile=directory+simulationName;
+   49 :
+   50 : //parametri fisici
+   51 : real dt=1.; real nuBlood=3.; real nuDial=1.; real gradDiv=100.; real rhoBlood=1.0*1.; real rhoDial=1.00*1.;
+   52 : //real dialysateSoluteDiffusion=.012585; real bloodSoluteDiffusion=.012585;
+   53 : real dialysateSoluteDiffusion=.00181; real bloodSoluteDiffusion=.000929;
+   54 :
+   55 : real tolerance=1e-6; real transportTol=1e-6;
+   56 : bool exportFlow=true;
+   57 : bool importFlow=false;
+   58 :
+   59 : //tipo di solutore, monolithic e' sempre quello piu' veloce
+   60 : string transportSolverType="monolithic";
+   61 : string transportPreconditioner="gauss-seidel";
+   62 : cout<<"Enter torturosity"<<endl;
+   63 : real tortuosity;
+   64 :
+   65 :
+   66 : //maxIterations is for N-S solve, numStepsMix is for the transport equations.
+   67 : int maxIterations=500; int numStepsMix=500; int subIterations=-1;
+   68 :
+   69 : //geometric parameters
+   70 : real L=80.;
+   71 : real bloodWidth=2.;
+   72 : real dialysateWidth=1.;
+   73 : real membraneWidth=0.;//.72/2.;
+   74 : //risoluzione del mesh
+   75 : real n=8.; int waveResolution=4;
+   76 : //input di tortorsity
+   77 : cin >> tortuosity;
+   78 : //frequenza delle onde
+   79 : real rapidity=.5; real baseline=1.;
+   80 : //l'area di influssi e outflussi prima iniziano le onde
+   81 : real bufferZone=3.*4.;
+   82 :
+   83 :
+   84 : //func gBlood= (shrinkFactor*5.)*((8.*.75)*((shrinkFactor*bloodWidth)+y)*((shrinkFactor*bloodWidth)-y))/((shrink     ) Factor*bloodWidth)^2);;
+   85 : //func gDial= (shrinkFactor*10.)*((8.*.75)*(shrinkFactor*bloodWidth-y)*((shrinkFactor*bloodWidth+shrinkFactor*di     ) alysateWidth)-y))/((shrinkFactor*dialysateWidth)^2);
+   86 : //func gBlood= (.67*.0166667)*((8.*.75)*((shrinkFactor*bloodWidth)+y)*((shrinkFactor*bloodWidth)-y))/((shrinkFac     ) tor*bloodWidth)^2);;
+   87 : //func gDial= (1.33*.016667)*((8.*.75)*(shrinkFactor*bloodWidth-y)*((shrinkFactor*bloodWidth+shrinkFactor*dialys     ) ateWidth)-y))/((shrinkFactor*dialysateWidth)^2);
+   88 : //func gBlood= (8.*(1.33)*1.667/(2.*pi))*((8.*.75)*((shrinkFactor*bloodWidth)+y)*((shrinkFactor*bloodWidth)-y))/     ) ((shrinkFactor*bloodWidth)^2);;
+   89 : //func gDial= (8.*2.*(1.33)*1.667/(2.*pi))*((8.*.75)*(shrinkFactor*bloodWidth-y)*((shrinkFactor*bloodWidth+shrin     ) kFactor*dialysateWidth)-y))/((shrinkFactor*dialysateWidth)^2);
+   90 : func gBlood= (8.*(4./3.)*(5./3)/(2.*pi))*((8.*.75)*((shrinkFactor*dialysateWidth)+y)*((shrinkFactor*dialysateWid     ) th)-y))/((shrinkFactor*dialysateWidth)^2);;
+   91 : func gDial= (4.*2.*(1.)*(5./3.)/(2.*pi))*((8.*.75)*(shrinkFactor*dialysateWidth-y)*((shrinkFactor*bloodWidth+shr     ) inkFactor*dialysateWidth)-y))/((shrinkFactor*bloodWidth)^2);
+   92 : //func gBlood= (0.0166666666)*((8.*.75)*((bloodWidth)+y)*((bloodWidth)-y))/((bloodWidth)^2);;
+   93 : //func gDial= (0.0166666666*2.)*((8.*.75)*(bloodWidth-y)*((bloodWidth+dialysateWidth)-y))/((dialysateWidth)^2);
+     )    94 :
+   95 :
+   96 : real K=1.; real p=1.; real wssThresh;/*=4.*42.5;*/ real vMaxPar=1.; real kappa=0.01;
+   97 : //qui metti pure il valore di WSS/8 che serve come threshhold
+   98 : cout<<"Enter wss threshold"<<endl;
+   99 : cin >> wssThresh;
+  100 : //non so perche' dobbiamo multiplicare questo da due... per il sigmoid sembra che serve la meta' del valore "ver     ) o"
+  101 : wssThresh=4.*wssThresh;
+  102 : //declare meshes
+  103 : //func gBlood=     4.*(.75*y*(bloodHeight-y))/(2^2);
+  104 : //func gDial=     4.*(.75*((inlet+outerRad-outWidth)-x)*(inlet+outerRad-x))/(2^2);
+  105 : //func gDial=     4*(.75*y*(bloodHeight-y))/(2^2);
+  106 : //func gBlood=     4*(.75*((inlet+outerRad-outWidth)-x)*(inlet+outerRad-x))/(2^2);
+  107 :
+  108 :
+  109 : border one(t=0.,dialysateWidth){x=t;y=0.;label=1;}
+  110 : border two(t=0.,bufferZone){x=dialysateWidth;y=t;label=4;}
+  111 : border three(t=bufferZone,L-bufferZone){x=dialysateWidth+tortuosity*sin(rapidity*pi*t);y=t;label=4;}
+  112 : border four(t=L-bufferZone,L){x=dialysateWidth;y=t;label=4;}
+  113 : border five(t=dialysateWidth,0.){x=t;y=L;label=3;}
+  114 : border six(t=L,0.){x=0.;y=t;label=2;}
+  115 : mesh ThDialA =buildmesh (one(2*n)+two(waveResolution*bufferZone*n)+three(waveResolution*(L-2*bufferZone)*n)+four     ) (waveResolution*bufferZone*n)+five(2*n)+six(L*n) );
+  116 : //ThDial=movemesh(ThDial,[y,x]);
+  117 :
+  118 : border seven(t=dialysateWidth,dialysateWidth+bloodWidth){x=t;y=0.;label=5;}
+  119 : border eight(t=0.,L){x=dialysateWidth+bloodWidth;y=t;label=8;}
+  120 : border nine(t=dialysateWidth+bloodWidth,dialysateWidth){x=t;y=L;label=7;}
+  121 : border ten(t=L,L-bufferZone){x=dialysateWidth;y=t;label=6;}
+  122 :
+  123 : border eleven(t=L-bufferZone,bufferZone){x=dialysateWidth+tortuosity*sin(rapidity*pi*t);y=t;label=6;}
+  124 : border twelve(t=bufferZone,0.){x=dialysateWidth;y=t;label=6;}
+  125 : mesh ThBlood =buildmesh (seven(2*n)+eight(L*n)+nine(2*n)+ten(waveResolution*bufferZone*n)+eleven((L-2*bufferZone     ) )*waveResolution*n)+twelve(bufferZone*n*waveResolution) );
+  126 : mesh ThDial=movemesh(ThBlood,[shrinkFactor*y,shrinkFactor*x]);
+  127 : ThBlood=movemesh(ThDialA,[shrinkFactor*y,shrinkFactor*x]);
+  128 : savemesh(ThDial,"./DialMesh.mesh");
+  129 : savemesh(ThBlood,"./BloodMesh.mesh");
+  130 :
+  131 : plot(ThBlood,ThDial);
+  132 : //blood fe spaces
+  133 : fespace VhBlood(ThBlood,[P2,P2]);
+  134 : fespace QhBlood(ThBlood,P1);
+  135 : //dialysate fe spaces
+  136 : fespace VhDial(ThDial,[P2,P2]);
+  137 : fespace QhDial(ThDial, P1);
+  138 : fespace DialMesh(ThDial,P0);
+  139 : fespace BloodMesh(ThBlood,P0);
+  140 :
+  141 : DialMesh hDial;
+  142 : BloodMesh hBlood;
+  143 : hDial=hTriangle;
+  144 : hBlood=hTriangle;
+  145 : VhBlood [bxh, byh];
+  146 : VhBlood [bxLast, byLast];
+  147 : VhBlood [bxT, byT];
+  148 : QhBlood pbh, cbh, qbh,cbhLast, cbhLast2,cbhOld, WSSSig, WSSVal, pbT;
+  149 : VhBlood [vxbh, vybh];
+  150 : VhBlood [bxWSS, byWSS];
+  151 :
+  152 :
+  153 : VhDial [dxh, dyh];
+  154 : VhDial [dxLast, dyLast];
+  155 : QhDial pdh, cdh, qdh, cdhLast, cdhLast2,cdhOld;
+  156 : VhDial [vxdh, vydh];
+  157 :
+  158 : cbhLast=0.00;
+  159 : cdhLast=.000;
+  160 : cout<<computeWSSAxi(nuBlood,bxh,byh,tortuosity,rapidity,bufferZone,L)     ( (nuBlood*stressTensor(bxh,byh)
+      [[dx(bxh), .5*(dy(bxh)+dx(byh))],[ .5*(dx(byh)+dy(bxh)),dy(byh)]]*normalVector(tortuosity,rapidity,bufferZone,L)
+  ( (1./sqrt(1.+funcDeriv(tortuosity,rapidity,bufferZone,L)             ( 0. + tortuosity*rapidity*pi*cos(4.*rapidity*pi     ) *x)*(x>.25*bufferZone && x < .25*(L - bufferZone)) ) *funcDeriv(tortuosity,rapidity,bufferZone,L)             ( 0. + tor     ) tuosity*rapidity*pi*cos(4.*rapidity*pi*x)*(x>.25*bufferZone && x < .25*(L - bufferZone)) ) ))*[1.,-funcDeriv(tortuosity,     ) rapidity,bufferZone,L)             ( 0. + tortuosity*rapidity*pi*cos(4.*rapidity*pi*x)*(x>.25*bufferZone && x < .25*(L -     )  bufferZone)) ) ] ) -nuBlood*((stressTensor(bxh,byh)            [[dx(bxh), .5*(dy(bxh)+dx(byh))],[ .5*(dx(byh)+dy(bxh)),     ) dy(byh)]]*normalVector(tortuosity,rapidity,bufferZone,L)    ( (1./sqrt(1.+funcDeriv(tortuosity,rapidity,bufferZone,L)
+          ( 0. + tortuosity*rapidity*pi*cos(4.*rapidity*pi*x)*(x>.25*bufferZone && x < .25*(L - bufferZone)) ) *funcDeri     ) v(tortuosity,rapidity,bufferZone,L)             ( 0. + tortuosity*rapidity*pi*cos(4.*rapidity*pi*x)*(x>.25*bufferZone &&     )  x < .25*(L - bufferZone)) ) ))*[1.,-funcDeriv(tortuosity,rapidity,bufferZone,L)             ( 0. + tortuosity*rapidity*     ) pi*cos(4.*rapidity*pi*x)*(x>.25*bufferZone && x < .25*(L - bufferZone)) ) ] ))'*normalVector(tortuosity,rapidity,bufferZ     ) one,L)    ( (1./sqrt(1.+funcDeriv(tortuosity,rapidity,bufferZone,L)             ( 0. + tortuosity*rapidity*pi*cos(4.*rap     ) idity*pi*x)*(x>.25*bufferZone && x < .25*(L - bufferZone)) ) *funcDeriv(tortuosity,rapidity,bufferZone,L)             (
+     ) 0. + tortuosity*rapidity*pi*cos(4.*rapidity*pi*x)*(x>.25*bufferZone && x < .25*(L - bufferZone)) ) ))*[1.,-funcDeriv(tor     ) tuosity,rapidity,bufferZone,L)             ( 0. + tortuosity*rapidity*pi*cos(4.*rapidity*pi*x)*(x>.25*bufferZone && x <
+     ) .25*(L - bufferZone)) ) ] ))*normalVector(tortuosity,rapidity,bufferZone,L)    ( (1./sqrt(1.+funcDeriv(tortuosity,rapidi     ) ty,bufferZone,L)             ( 0. + tortuosity*rapidity*pi*cos(4.*rapidity*pi*x)*(x>.25*bufferZone && x < .25*(L - buffe     ) rZone)) ) *funcDeriv(tortuosity,rapidity,bufferZone,L)             ( 0. + tortuosity*rapidity*pi*cos(4.*rapidity*pi*x)*(     ) x>.25*bufferZone && x < .25*(L - bufferZone)) ) ))*[1.,-funcDeriv(tortuosity,rapidity,bufferZone,L)             ( 0. + t     ) ortuosity*rapidity*pi*cos(4.*rapidity*pi*x)*(x>.25*bufferZone && x < .25*(L - bufferZone)) ) ] )  ) <<endl; error operat     ) or <<  <7E_Array>, <c>
+ List of choices
+         (        <So> :   <So>, <4KNM_IlE> )
+         (        <So> :   <So>, <14Matrice_CreuseISt7complexIdEE> )
+         (        <So> :   <So>, <14Matrice_CreuseIdE> )
+         (        <So> :   <So>, <N5Fem2D2R3E> )
+         (        <So> :   <So>, <7OP_setw> )
+         (        <So> :   <So>, <5MyMapI6StringS0_E> )
+         (        <So> :   <So>, <NSt7__cxx1112basic_stringIcSt11char_traitsIcESaIcEEE> )
+         (        <So> :   <So>, <St7complexIdE> )
+         (        <So> :   <So>, <d> )
+         (        <So> :   <So>, <l> )
+         (        <So> :   <So>, <b> )
+         (        <So> :   <So>, <5MyMapI6StringSt7complexIdEE> )
+         (        <So> :   <So>, <2KNIS_ISt7complexIdEEE> )
+         (        <So> :   <So>, <2KNI3KNMISt7complexIdEEE> )
+         (        <So> :   <So>, <3KN_ISt7complexIdEE> )
+         (        <So> :   <So>, <4KNM_ISt7complexIdEE> )
+         (        <So> :   <So>, <5MyMapI6StringdE> )
+         (        <So> :   <So>, <2KNIS_IdEE> )
+         (        <So> :   <So>, <2KNI3KNMIdEE> )
+         (        <So> :   <So>, <3KN_IdE> )
+         (        <So> :   <So>, <4KNM_IdE> )
+         (        <So> :   <So>, <P2KNI6StringE> )
+         (        <So> :   <So>, <5MyMapI6StringlE> )
+         (        <So> :   <So>, <2KNIS_IlEE> )
+         (        <So> :   <So>, <2KNI3KNMIlEE> )
+         (        <So> :   <So>, <3KN_IlE> )
+ 
+ Error line number 160, in file C:\Users\P70073624\Desktop\SangitaStuff\SangitaStuff\MicroScaleCodePreconditioningStudy-     ) SS.txt, before  token ;
+ 
+  current line = 160
+Compile error :
+        line number :160, ;
+error Compile error :
+        line number :160, ;
+ code = 1 mpirank: 0
+ try getConsole C:\Users\P70073624\Desktop\SangitaStuff\SangitaStuff\MicroScaleCodePreconditioningStudy-SS.txt

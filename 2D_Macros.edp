@@ -1,0 +1,92 @@
+
+//useful macros
+//Various stress-tensor macros, helpful for different formulations of the diffusive term.
+macro vectorLaplacian(uxh,uyh)[-(dxx(uxh)+dyy(uxh)),-(dxx(uyh)+dyy(uyh))]//
+macro vectorGrad(uxh,uyh)[[dx(uxh),dy(uxh)],[dx(uyh),dy(uyh)] ]//
+macro vectorGradDoubleDot(ux,uy)[dx(ux),dy(ux),dx(uy),dy(uy) ]//
+macro terminePressure(ux,uy,p) (p*(dx(ux)+dy(uy)) )//
+macro skewSym(ux,uy)     [ [0, .5*(dy(ux)-dx(uy))], [.5*(dx(uy)-dy(ux)),0]] //
+macro skewSymDoubleDot(ux,uy)  [.5*(dy(ux)-dx(uy)),.5*(dx(uy)-dy(ux))] //
+macro stressTensor(ux,uy)     [[dx(ux), .5*(dy(ux)+dx(uy))],[ .5*(dx(uy)+dy(ux)),dy(uy)]]//
+macro stressTensorDoubleDot(ux,uy) [dx(ux), .5*(dy(ux)+dx(uy)), .5*(dx(uy)+dy(ux)),dy(uy) ] //
+macro termineDiffusiva(ux,uy,vx,vy) (2*stressTensorDoubleDot(ux,uy)'*vectorGradDoubleDot(vx,vy))//
+macro termineDiffusivaLaplace(ux,uy,vx,vy) (vectorGradDoubleDot(ux,uy)'*vectorGradDoubleDot(vx,vy))//
+macro divSym(ux,uy)     [dxx(ux)+ .5*(dyy(ux)+dxy(uy)), .5*(dxx(uy)+dyx(ux))+dyy(uy)]//
+macro stressTensor2(p) [ [p,0],[0, p]] //
+macro vectorDiv(ux,uy)(dx(ux)+dy(uy) )//
+macro gradDivStab(ux,uy,vx,vy)( (dx(ux)+dy(uy))*(dx(vx)+dy(vy)) ) //
+macro neumannBoundaryLaplace(uxh,uyh,vxh,vyh,p,nu) ( (nu*vectorGrad(uxh,uyh)*[N.x,N.y])'*[vxh,vyh]-p*[N.x,N.y]'*[vxh,vyh] ) //
+macro neumannBoundaryFullTensor(uxh,uyh,vxh,vyh,p,nu) ( (nu*stressTensor(uxh,uyh)*[N.x,N.y])'*[vxh,vyh]-p*[N.x,N.y]'*[vxh,vyh] ) //
+macro computeWSS(nu,uxh,uyh)( nu*stressTensor(uxh,uyh)*[N.x,N.y] - nu*((stressTensor(uxh,uyh)*[N.x,N.y])'*[N.x,N.y])*[N.x,N.y]) //
+//macro computeWSSAxi(nu,uxh,uyh)( (nu*axiNormal*stressTensor(uxh,uyh)*[0,N.y] + axiNormal*nu*(1./y)*uyh*[0,N.y] - nu*((axiNormal*stressTensor(uxh,uyh)*[0,N.y])'*[0,N.y]*axiNormal)*[0,N.y]*axiNormal - nu*(1./y)*((uyh*axiNormal*[0,N.y])'*[0,N.y]*axiNormal)*[0,N.y]*axiNormal) ) //
+//Macros for the trilinear form
+macro UdotGradU (upx,upy,ux,uy)[upx*dx(ux)+upy*dy(ux), upx*dx(uy) + upy*dy(uy) ] //
+macro formaTrilinare(upx,upy,ux,uy,vx,vy) (UdotGradU(upx,upy,ux,uy)'*[vx,vy] ) //
+macro formaTrilinareLeo(upx,upy,ux,uy,vx,vy) (.5*UdotGradU(upx,upy,ux,uy)'*[vx,vy] - .5*UdotGradU(upx,upy,vx,vy)'*[ux,uy] ) //
+
+
+
+//Macro for strongly consistent stabilization techniques
+macro pGrad(p)[dx(p),dy(p) ] //
+
+//macro supgTerm(ux,uy,upx,upy,p)[ nu*vectorLaplacian(ux,uy) + UdotGradU(upx,upy,ux,uy)+ pGrad(p) ]//
+macro stabTerm1(ux,uy,upx,upy,p,nu)[-nu*dxx(ux)-nu*dyy(ux)+upx*dx(ux)+upy*dy(ux)+dx(p),
+									-nu*dxx(uy)-nu*dyy(uy)+upx*dx(uy)+upy*dy(uy)+dy(p) ]//
+macro galsStabTerm2(ux,uy,upx,upy,p,nu)[-nu*dxx(ux)-nu*dyy(ux)+upx*dx(ux)+upy*dy(ux)+dx(p),
+									    -nu*dxx(uy)-nu*dyy(uy)+upx*dx(uy)+upy*dy(uy)+dy(p) ]//
+macro supgStabTerm2(ux,uy,upx,upy,p)[upx*dx(ux) + upy*dy(ux) + dx(p), 
+									 upx*dx(uy) + upy*dy(uy) + dy(p) ] // 
+macro modStabTerm1(ux,uy,ix,iy,p,nu)[-nu*dxx(ux)-nu*dyy(ux)+ix*dx(ux)+iy*dy(ux)+dx(p),
+												 -nu*dxx(uy)-nu*dyy(uy)+ix*dx(uy)+iy*dy(uy)+dy(p) ]//
+macro modStabExplTerm(upx,upy,diffx,diffy)[diffx*dx(upx) + diffy*dy(upx), 
+										   diffx*dx(upy)+diffy*dy(upy) ]//
+macro modStabTerm2SUPG(ux,uy,ix,iy,p,nu)[ix*dx(ux) + iy*dy(ux) + dx(p), 
+								      ix*dx(uy) + iy*dy(uy) + dy(p) ] // 
+macro modStabTerm2GALS(ux,uy,ix,iy,p,nu)[-nu*dxx(ux)-nu*dyy(ux)+ix*dx(ux)+iy*dy(ux)+dx(p),
+									     -nu*dxx(uy)-nu*dyy(uy)+ix*dx(uy)+iy*dy(uy)+dy(p) ]//
+macro galsStab(ux,uy,upx,upy,vx,vy,p,q,nu)( stabTerm1(ux,uy,upx,upy,p,nu)'*galsStabTerm2(vx,vy,upx,upy,q,nu) ) //
+macro supgStab(ux,uy,upx,upy,vx,vy,p,q,nu)( stabTerm1(ux,uy,upx,upy,p,nu)'*supgStabTerm2(vx,vy,upx,upy,q) ) //
+macro modStab(ux,uy,ix,iy,vx,vy,p,q,nu)( modStabTerm1(ux,uy,ix,iy,p,nu)'*modStabTerm2SUPG(vx,vy,ix,iy,q,nu) )//
+macro modStabExp(upx,upy,diffx,diffy,ix,iy,vx,vy,p,q,nu)( modStabExplTerm(upx,upy,diffx,diffy)'*modStabTerm2SUPG(vx,vy,ix,iy,q,nu) )//
+macro modStabAsym(ux,uy,upx,upy,ix,iy,vx,vy,p,q,nu)( modStabTerm1(ux,uy,upx,upy,p,nu)'*modStabTerm2SUPG(vx,vy,ix,iy,q,nu) )//
+
+//Macros for linear kinetic formulation
+macro kineticVelocityStressGrad(ux,uy,Txx,Txy,Tyx,Tyy)(vectorGradDoubleDot(ux,uy)'*[Txx,Txy,Tyx,Tyy]) // 
+macro kineticVelocityStressTensor(ux,uy,Txx,Txy,Tyx,Tyy)(2*stressTensorDoubleDot(ux,uy)'*[Txx,Txy,Tyx,Tyy]) // 
+
+macro tensorDiv(Txx,Txy,Tyx,Tyy) ( [dx(Txx)+dy(Txy), dx(Tyx)+dy(Tyy) ] )//
+macro kineticVelocityStressGradIBP(ux,uy,Txx,Txy,Tyx,Tyy)( [ux,uy]'*tensorDiv(Txx,Txy,Tyx,Tyy) ) // 
+macro kineticVelocityBoundaryTerm(Txx,Txy,Tyx,Tyy)( [ [Txx, Txy],[Tyx, Tyy] ] ) //
+macro kineticVelocityDiadicProduct(uxold,uyold,uxh,uyh)( [uxh*uxold, uxh*uyold, uyh*uxold,uyh*uyold ]  ) // 
+macro kineticVelocityDiadicProductTensor(uxold,uyold,uxh,uyh)( [ [uxh*uxold, uxh*uyold], [uyh*uxold,uyh*uyold] ]  ) // 
+ 
+macro kineticVelocityNonlinearTerm(uxold,uyold,uxh,uyh,Txx,Txy,Tyx,Tyy)( kineticVelocityDiadicProduct(uxold,uyold,uxh,uyh)'*[Txx,Txy,Tyx,Tyy]  ) // 
+
+
+//Useful for residual computation:
+macro checkVectorResidual(ux1,uy1,ux2,uy2) ( sqrt( abs( int2d(Th)( (ux1-ux2)^2 + (uy1-uy2)^2) ) ) ) // 		
+macro checkVectorResidualMesh(ux1,uy1,ux2,uy2,msh) ( sqrt( abs( int2d(msh)( (ux1-ux2)^2 + (uy1-uy2)^2) ) ) ) // 		
+macro vectorNorm(ux,uy)( sqrt( abs(int2d(Th) (ux^2+uy^2) ) ) )//
+macro vectorNormMesh(ux,uy,msh)( sqrt( abs(int2d(msh) (ux^2+uy^2) ) ) )//
+
+macro checkScalarResidual(p1,p2,Th) ( sqrt(abs(int2d(Th)( (p1-p2)^2) ) ) ) //
+macro scalarNorm(p,Th) (sqrt(abs(int2d(Th)(p^2) ) ) ) //
+macro checkVectorRelativeResidual(ux1,uy1,ux2,uy2)(checkVectorResidual(ux1,uy1,ux2,uy2)/vectorNorm(ux2,uy2) )//
+macro checkVectorRelativeResidualMesh(ux1,uy1,ux2,uy2,msh)(checkVectorResidualMesh(ux1,uy1,ux2,uy2,msh)/vectorNormMesh(ux2,uy2,msh) )//
+
+macro checkScalarRelativeResidual(p1,p2,Th)(checkScalarResidual(p1,p2,Th)/scalarNorm(p2,Th) )//
+//I don't really use these, but if you want to monitor residuals with velocity and pressure they're useful.
+macro checkVectorScalarResidual(ux,uy,upx,upy,p,pp)(sqrt(abs(int2d(Th)((ux-upx)^2+(uy-upy)^2+ (p-pp)^2 ) ) ) ) //
+macro vectorScalarNorm(ux,uy,p)(sqrt(abs(int2d(Th)((ux)^2+(uy)^2 +(p)^2 ) ) ) ) //
+macro checkVectorScalarRelativeResidual(ux,uy,upx,upy,p,pp)(checkVectorScalarResidual(ux,uy,upx,upy,p,pp)/vectorScalarNorm(upx,upy,pp) ) //
+macro checkVectorScalarVecNorm(ux,uy,p)(ux[].linfty+uy[].linfty+p[].linfty) //	
+macro vectorH1Norm(ux,uy) ( sqrt( abs(int2d(Th) (ux^2+uy^2 +dx(ux)^2+dy(ux)^2+dx(uy)^2+dy(uy)^2) ) ) ) //
+
+macro checkVectorH1Residual(ux1,uy1,ux2,uy2)  sqrt( abs ( int2d(Th)( (ux1-ux2)^2 + (uy1-uy2)^2 + ( dx(ux1)-dx(ux2))^2 + (dx(uy1)-dx(uy2))^2 +  (dy(ux1)-dy(ux2))^2 + (dy(uy1)-dy(uy2))^2 ) ) ) //
+macro checkVectorH1RelativeResidual(ux1,uy1,ux2,uy2) ( checkVectorH1Residual(ux1,uy1,ux2,uy2)/vectorH1Norm(ux2,uy2) ) //
+macro matrixH1Norm(K,uxh)(sqrt(abs( (uxh)'*(K*uxh) ) ) ) //
+macro checkFlux(uxh,uyh,lab)( int1d(Th,lab)([uxh,uyh]'*[N.x,N.y] )  ) //
+//macro steadyResidualVector(uxh,uyh,ph,nu) ( [ -nu*dxx(uxh) - nu*dyy(uxh) + uxh*dx(uxh)+uyh*dy(uxh) + dx(ph) ,   -nu*dxx(uyh) - nu*dyy(uyh) + uxh*dx(uyh)+uyh*dy(uyh) + dy(ph) ]    ) // 		
+//macro checkSteadyResidualNoForcing(uxh,uyh,ph,nu) ( steadyResidualVector(uxh,uyh,ph,nu)'*steadyResidualVector(uxh,uyh,ph,nu)    ) // 		
+macro checkSteadyResidualNoForcing(uxh,uyh,ph,nu,vxh,vyh) ( -nu*termineDiffusivaLaplace(uxh,uyh,vxh,vyh) +  formaTrilinare(uxh,uyh,uxh,uyh,vxh,vyh) - terminePressure(vxh,vyh,ph)     ) // 
+macro initiateGlobalMesh(x0,y0,L,Hstart,Hfinal,nX,nY, boundaryLabel,flag) (square(L*nX, (Hstart/Hfinal)*nY, [x0 + L*x, y0 + Hstart*y],label=boundaryLabel,flags=flag ) ) //  

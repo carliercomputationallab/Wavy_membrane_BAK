@@ -1,0 +1,193 @@
+load "iovtk";
+
+macro variablePath(variableDirectory,simulationName,variableType,extension)( ( (variableDirectory+simulationName)+variableType ) +extension ) //
+
+macro itsCool(x1,x2){real k4= x1+x2;}//
+
+macro vtkScalarVariableExporter(variableValue,varName, Th, variableDirectory,simulationName,variableType,extension){ 
+				ofstream fileOutput(variablePath(variableDirectory,simulationName,variableType,extension) );
+				fespace VhC(Th, P2);
+				VhC[int] uh(2);
+				uh[0] = x;
+				uh[1] = y;
+		
+	
+				int nvertices = Th.nv;
+				int ntriangles = Th.nt;
+				int size = VhC.ndof;
+
+				
+	
+
+	
+				fileOutput << "# vtk DataFile Version 3.0 "<< endl;
+				fileOutput << "output.vtk, Created by Freefem++" << endl;
+				fileOutput << "ASCII" << endl;
+				fileOutput << "DATASET UNSTRUCTURED_GRID" << endl;
+
+	
+	
+	
+				real iter=0;
+				fileOutput << "POINTS " << size << " double" << endl;
+				for ( int i = 0; i < size; i++)
+				{
+					real Thx = uh[0][][i];
+					real Thy = uh[1][][i];	
+					fileOutput << Thx  << " " << Thy << " " << 0 << endl; 
+				}
+				fileOutput << endl;
+	
+	
+	
+	
+	
+	
+				fileOutput << "CELLS " << ntriangles<< " "<< 4*ntriangles << endl;
+				for( int i = 0;i<ntriangles; i++) 
+					{
+						fileOutput << 3 << " ";
+						for(int j = 0; j<3;j++) 
+						{
+							fileOutput << VhC(i,j) << " ";
+						}
+						fileOutput << endl;
+					}
+		
+		
+	
+
+	
+			
+				fileOutput << "CELL_TYPES " << ntriangles << endl;
+				for(int i=0;i<ntriangles;i++)
+				{
+					fileOutput << "5 ";
+				}
+				fileOutput << endl;
+		
+	
+	
+	
+		
+				fileOutput << "POINT_DATA " << size << endl;
+				fileOutput << " "<< endl;
+				int narray = 1; 
+				string[int] name(narray);
+				name[0] = varName ; 
+ 
+				fileOutput << "FIELD " << "FieldData " << narray << endl;
+			
+
+				
+				fileOutput <<" " << endl;
+				fileOutput << name[0] << " 1 " << size <<" double" << endl;
+						for (int i =0; i< size ;i++)
+						{
+
+							real Thx = uh[0][][i];
+							real Thy = uh[1][][i];
+							fileOutput << variableValue(Thx,Thy) <<  endl;
+						}
+			
+			
+	
+		
+			
+			
+}//
+
+
+
+macro vtkVectorVariableExporter(variableValueX,variableValueY,varName, Th, variableDirectory,simulationName,variableType,extension){ 
+				ofstream fileOutput(variablePath(variableDirectory,simulationName,variableType,extension) );
+				fespace VhC(Th, P2);
+				VhC[int] uh(2);
+				uh[0] = x;
+				uh[1] = y;
+		
+	
+				int nvertices = Th.nv;
+				int ntriangles = Th.nt;
+				int size = VhC.ndof;
+
+				
+	
+
+	
+				fileOutput << "# vtk DataFile Version 3.0 "<< endl;
+				fileOutput << "output.vtk, Created by Freefem++" << endl;
+				fileOutput << "ASCII" << endl;
+				fileOutput << "DATASET UNSTRUCTURED_GRID" << endl;
+
+	
+	
+	
+				real iter=0;
+				fileOutput << "POINTS " << size << " double" << endl;
+				for ( int i = 0; i < size; i++)
+				{
+					real Thx = uh[0][][i];
+					real Thy = uh[1][][i];	
+					fileOutput << Thx  << " " << Thy << " " << 0 << endl; 
+				}
+				fileOutput << endl;
+	
+	
+	
+	
+	
+	
+				fileOutput << "CELLS " << ntriangles<< " "<< 4*ntriangles << endl;
+				for( int i = 0;i<ntriangles; i++) 
+					{
+						fileOutput << 3 << " ";
+						for(int j = 0; j<3;j++) 
+						{
+							fileOutput << VhC(i,j) << " ";
+						}
+						fileOutput << endl;
+					}
+		
+		
+	
+
+	
+			
+				fileOutput << "CELL_TYPES " << ntriangles << endl;
+				for(int i=0;i<ntriangles;i++)
+				{
+					fileOutput << "5 ";
+				}
+				fileOutput << endl;
+		
+	
+	
+	
+		
+				fileOutput << "POINT_DATA " << size << endl;
+				fileOutput << " "<< endl;
+				int narray = 1; 
+				string[int] name(narray);
+				name[0] = varName ; 
+ 
+				fileOutput << "FIELD " << "FieldData " << narray << endl;
+			
+
+				
+				fileOutput <<" " << endl;
+				fileOutput << name[0] << " 3 " << size <<" double" << endl;
+						for (int i =0; i< size ;i++)
+						{
+
+							real Thx = uh[0][][i];
+							real Thy = uh[1][][i];
+							fileOutput << variableValueX(Thx,Thy) << " "<< variableValueY(Thx,Thy) <<" 0"<< endl;
+						}
+			
+			
+	
+		
+			
+			
+}//
